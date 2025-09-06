@@ -1,0 +1,220 @@
+-- LocalScript
+local player = game.Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Enemies = Workspace:WaitForChild("Enemies")
+
+local RegAttack = ReplicatedStorage.Modules.Net["RE/RegisterAttack"]
+local RegHit = ReplicatedStorage.Modules.Net["RE/RegisterHit"]
+
+local MON, MONPOS, QUESTPOS, QUESTNAME, QUESTNUMBER
+local maxDistance = 500  -- ระยะตรวจจับศัตรู
+
+-- ฟังก์ชันตั้งค่าเควสและมอนตามเลเวล 1–700
+local function checkLevel()
+    local Level = player.Data.Level.Value
+
+    if Level >= 1 and Level <= 9 then
+        MON = "Bandit"; MONPOS = CFrame.new(1198.66,16.74,1618.34)
+        QUESTPOS = CFrame.new(1057.98,17.70,1550.54); QUESTNAME = "BanditQuest1"; QUESTNUMBER = 1
+    elseif Level >=10 and Level<=14 then
+        MON = "Monkey"; MONPOS = CFrame.new(-1619.10,21.70,142.14)
+        QUESTPOS = CFrame.new(-1598.08,35.55,153.37); QUESTNAME = "JungleQuest"; QUESTNUMBER=1
+    elseif Level >=15 and Level<=29 then
+        MON = "Gorilla"; MONPOS = CFrame.new(-1135.46,40.71,-529.90)
+        QUESTPOS = CFrame.new(-1598.08,35.55,153.37); QUESTNAME="JungleQuest"; QUESTNUMBER=2
+    elseif Level >=30 and Level<=39 then
+        MON = "Pirate"; MONPOS = CFrame.new(-1224.39,4.79,3916.23)
+        QUESTPOS = CFrame.new(-1140.03,4.79,3830.26); QUESTNAME="BuggyQuest1"; QUESTNUMBER=1
+    elseif Level >=40 and Level<=59 then
+        MON = "Brute"; MONPOS = CFrame.new(-1224.39,4.79,3916.23)
+        QUESTPOS = CFrame.new(-1140.03,4.79,3830.26); QUESTNAME="BuggyQuest1"; QUESTNUMBER=2
+    elseif Level >=60 and Level<=74 then
+        MON = "Desert Bandit"; MONPOS = CFrame.new(932.60,7.32,4486.49)
+        QUESTPOS = CFrame.new(897.49,6.44,4388.54); QUESTNAME="DesertQuest"; QUESTNUMBER=1
+    elseif Level >=75 and Level<=89 then
+        MON = "Desert Officer"; MONPOS = CFrame.new(1572.10,10.39,4372.46)
+        QUESTPOS = CFrame.new(897.49,6.44,4388.54); QUESTNAME="DesertQuest"; QUESTNUMBER=2
+    elseif Level >=90 and Level<=99 then
+        MON = "Snow Bandit"; MONPOS = CFrame.new(1353.78,105.22,-1462.11)
+        QUESTPOS = CFrame.new(1389.91,87.27,-1297.12); QUESTNAME="SnowQuest"; QUESTNUMBER=1
+    elseif Level >=100 and Level<=119 then
+        MON = "Snowman"; MONPOS = CFrame.new(1189.68,105.42,-1410.17)
+        QUESTPOS = CFrame.new(1389.91,87.27,-1297.12); QUESTNAME="SnowQuest"; QUESTNUMBER=2
+    elseif Level >=120 and Level<=149 then
+        MON = "Chief Petty Officer"; MONPOS = CFrame.new(-4855.77,22.67,4308.97)
+        QUESTPOS = CFrame.new(-4881.28,22.65,4289.54); QUESTNAME="MarineQuest2"; QUESTNUMBER=1
+    elseif Level >=150 and Level<=174 then
+        MON = "Sky Bandit"; MONPOS = CFrame.new(-4981.47,278.58,-2837.20)
+        QUESTPOS = CFrame.new(-4841.42,717.67,-2622.35); QUESTNAME="SkyQuest"; QUESTNUMBER=1
+    elseif Level >=175 and Level<=189 then
+        MON = "Dark Master"; MONPOS = CFrame.new(-5250.72,388.57,-2272.98)
+        QUESTPOS = CFrame.new(-4841.42,717.67,-2622.35); QUESTNAME="SkyQuest"; QUESTNUMBER=2
+    elseif Level >=190 and Level<=209 then
+        MON = "Prisoner"; MONPOS = CFrame.new(4855.34,5.67,740.15)
+        QUESTPOS = CFrame.new(5307.86,1.67,474.65); QUESTNAME="PrisonerQuest"; QUESTNUMBER=1
+    elseif Level >=210 and Level<=249 then
+        MON = "Dangerous Prisoner"; MONPOS = CFrame.new(5014.35,5.67,841.21)
+        QUESTPOS = CFrame.new(5307.86,1.67,474.65); QUESTNAME="PrisonerQuest"; QUESTNUMBER=2
+    elseif Level >=250 and Level<=274 then
+        MON = "Toga Warrior"; MONPOS = CFrame.new(-1772.16,8.41,-2745.31)
+        QUESTPOS = CFrame.new(-1801.54,7.83,-2741.56); QUESTNAME="ColosseumQuest"; QUESTNUMBER=1
+    elseif Level >=275 and Level<=299 then
+        MON = "Gladiator"; MONPOS = CFrame.new(-1294.88,7.83,-2736.35)
+        QUESTPOS = CFrame.new(-1801.54,7.83,-2741.56); QUESTNAME="ColosseumQuest"; QUESTNUMBER=2
+    elseif Level >=300 and Level<=324 then
+        MON = "Military Soldier"; MONPOS = CFrame.new(-4570.05,20.65,4420.42)
+        QUESTPOS = CFrame.new(-4589.85,20.65,4433.49); QUESTNAME="MagmaQuest"; QUESTNUMBER=1
+    elseif Level >=325 and Level<=374 then
+        MON = "Military Spy"; MONPOS = CFrame.new(-5536.28,20.65,4300.49)
+        QUESTPOS = CFrame.new(-4589.85,20.65,4433.49); QUESTNAME="MagmaQuest"; QUESTNUMBER=2
+    elseif Level >=375 and Level<=399 then
+        MON = "Fishman Warrior"; MONPOS = CFrame.new(60808.32,18.07,1567.60)
+        QUESTPOS = CFrame.new(61122.86,18.07,1567.60); QUESTNAME="FishmanQuest"; QUESTNUMBER=1
+    elseif Level >=400 and Level<=449 then
+        MON = "Fishman Commando"; MONPOS = CFrame.new(61122.86,18.07,1567.60)
+        QUESTPOS = CFrame.new(61122.86,18.07,1567.60); QUESTNAME="FishmanQuest"; QUESTNUMBER=2
+    elseif Level >=450 and Level<=474 then
+        MON = "God's Guard"; MONPOS = CFrame.new(-4607.51,866.41,-1888.38)
+        QUESTPOS = CFrame.new(-4721.55,845.28,-1954.79); QUESTNAME="SkyExp1Quest"; QUESTNUMBER=1
+    elseif Level >=475 and Level<=524 then
+        MON = "Shanda"; MONPOS = CFrame.new(-7685.29,554.17,-494.48)
+        QUESTPOS = CFrame.new(-7869.16,554.17,-380.84); QUESTNAME="SkyExp1Quest"; QUESTNUMBER=2
+    elseif Level >=525 and Level<=549 then
+        MON = "Royal Squad"; MONPOS = CFrame.new(-7675.76,560.56,-1427.71)
+        QUESTPOS = CFrame.new(-7682.27,556.56,-1451.22); QUESTNAME="SkyExp2Quest"; QUESTNUMBER=1
+    elseif Level >=550 and Level<=624 then
+        MON = "Royal Soldier"; MONPOS = CFrame.new(-7822.28,560.41,-1507.26)
+        QUESTPOS = CFrame.new(-7682.27,556.56,-1451.22); QUESTNAME="SkyExp2Quest"; QUESTNUMBER=2
+    -- ต่อจาก checklevel() Level >=625
+    elseif Level >=625 and Level<=649 then
+        MON = "Galley Pirate"; MONPOS = CFrame.new(5617.62,94.32,4856.97)
+        QUESTPOS = CFrame.new(5617.62,94.32,4856.97); QUESTNAME="FountainQuest"; QUESTNUMBER=1
+    elseif Level >=650 and Level<=500000000 then
+        MON = "Galley Captain"; MONPOS = CFrame.new(5809.33,94.42,4836.74)
+        QUESTPOS = CFrame.new(5617.62,94.32,4856.97); QUESTNAME="FountainQuest"; QUESTNUMBER=2
+    end
+end
+
+
+-- ฟังก์ชันบินไปตำแหน่ง (ทะลุกำแพง)
+local function flyTo(targetCFrame, speed)
+    speed = speed or 125
+    local character = player.Character
+    if not character then return false end
+    local HRP = character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = character:FindFirstChild("Humanoid")
+    if not HRP or not Humanoid then return false end
+
+    -- ปิดการชนทุกชิ้นส่วนของตัวละคร (NoClip)
+    for _, part in pairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+
+    local direction = (targetCFrame.Position - HRP.Position)
+    local distance = direction.Magnitude
+    if distance > 1 then
+        HRP.CFrame = HRP.CFrame + direction.Unit * math.min(speed * RunService.RenderStepped:Wait(), distance)
+        return false
+    end
+    return true
+end
+
+-- เช็กว่ามีเควสอยู่หรือยัง
+local function hasQuest()
+    local questGui = player.PlayerGui:FindFirstChild("Main")
+    if questGui and questGui:FindFirstChild("Quest") then
+        if questGui.Quest.Visible == true then
+            return true
+        end
+    end
+    return false
+end
+
+-- รับเควส
+local function acceptQuest()
+    if QUESTNAME and not hasQuest() then
+        local questRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+        questRemote:InvokeServer("StartQuest", QUESTNAME, QUESTNUMBER)
+    end
+end
+
+-- บินไปหามอนตัวใกล้ที่สุด (เหนือหัว 15 stud)
+local function goToClosestMonster()
+    local character = player.Character
+    if not character then return end
+    local HRP = character:FindFirstChild("HumanoidRootPart")
+    if not HRP then return end
+
+    local closestEnemy = nil
+    local shortestDistance = math.huge
+
+    for _, enemy in pairs(Enemies:GetChildren()) do
+        if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy.Name == MON then
+            local enemyHRP = enemy:FindFirstChild("HumanoidRootPart")
+            if enemyHRP then
+                local dist = (enemyHRP.Position - HRP.Position).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closestEnemy = enemy
+                end
+            end
+        end
+    end
+
+    if closestEnemy then
+        local targetCFrame = closestEnemy.HumanoidRootPart.CFrame + Vector3.new(0,15,0)
+        flyTo(targetCFrame, 125)
+    else
+        local waitCFrame = MONPOS + Vector3.new(0,5,0)
+        flyTo(waitCFrame, 125)
+    end
+end
+
+-- AutoAttack
+local function autoAttack()
+    local character = player.Character
+    if not character then return end
+    local HR = character:FindFirstChild("HumanoidRootPart")
+    local Head = character:FindFirstChild("Head") or HR
+    if not HR then return end
+
+    RegAttack:FireServer(0.5)
+
+    local HR_arg = {HR, {}}
+    local Head_arg = {Head, {}}
+
+    for _, enemy in pairs(Enemies:GetChildren()) do
+        if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+            local enemyHRP = enemy:FindFirstChild("HumanoidRootPart")
+            if enemyHRP and (enemyHRP.Position - HR.Position).Magnitude <= maxDistance then
+                table.insert(HR_arg[2], {enemy, enemyHRP})
+                table.insert(Head_arg[2], {enemy, enemyHRP})
+            end
+        end
+    end
+
+    if #HR_arg[2] > 0 then
+        pcall(function() RegHit:FireServer(unpack(HR_arg)) end)
+        pcall(function() RegHit:FireServer(unpack(Head_arg)) end)
+    end
+end
+
+-- ลูปหลัก
+RunService.RenderStepped:Connect(function()
+    checkLevel()
+
+    if not hasQuest() then
+        local arrived = flyTo(QUESTPOS, 125)
+        if arrived then
+            acceptQuest()
+        end
+    else
+        goToClosestMonster()
+    end
+
+    autoAttack()
+end)
