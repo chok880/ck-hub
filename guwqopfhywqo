@@ -1,0 +1,201 @@
+--// 🔥 Hack Hub UI + ESP/Hitbox Toggle Fixed + Ammo Infinite + No Recoil
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Player = Players.LocalPlayer
+local Global = require(ReplicatedStorage.Libraries.Global)
+
+-- ตัวแปรเปิด/ปิดฟีเจอร์
+local ESP_Enabled = false
+local Hitbox_Enabled = false
+local Ammo_Enabled = false
+local NoRecoil_Enabled = false
+
+-- ==========================
+-- ฟังก์ชันตั้งค่า Ammo + No Recoil
+-- ==========================
+local function applyGunConfig()
+    for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
+        for _, gun in pairs(gunFolder:GetChildren()) do
+            if gun:FindFirstChild("Configuration") then
+                local Config = require(gun.Configuration)
+                if Ammo_Enabled then
+                    Config.maxAmmo = math.huge
+                end
+                if NoRecoil_Enabled then
+                    if Config.recoil then Config.recoil = 0 end
+                    if Config.camKick then Config.camKick = 0 end
+                    if Config.spread then Config.spread = 0 end
+                    if Config.accuracy then Config.accuracy = 1 end
+                end
+            end
+        end
+    end
+end
+
+-- ==========================
+-- ESP Wallhack + Hitbox
+-- ==========================
+local function addESP(character, teamColor)
+    if not character:FindFirstChild("ESP_Highlight") then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ESP_Highlight"
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = character
+
+        if teamColor == "Blue" then
+            highlight.FillColor = Color3.fromRGB(0, 120, 255)
+        elseif teamColor == "Red" then
+            highlight.FillColor = Color3.fromRGB(255, 60, 60)
+        else
+            highlight.FillColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+end
+
+local function removeESP(character)
+    local esp = character:FindFirstChild("ESP_Highlight")
+    if esp then esp:Destroy() end
+end
+
+local function updateESP()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= Player and v.Character then
+            local hrp = v.Character:FindFirstChild("HumanoidRootPart")
+            local hum = v.Character:FindFirstChildOfClass("Humanoid")
+
+            if hrp and hum then
+                if hum.Health > 0 then
+                    if Global.Teams[v] ~= Global.Teams[Player] then
+                        -- ✅ ESP Toggle
+                        if ESP_Enabled then
+                            addESP(v.Character, Global.Teams[v])
+                        else
+                            removeESP(v.Character)
+                        end
+                        -- ✅ Hitbox Toggle
+                        if Hitbox_Enabled then
+                            hrp.Size = Vector3.new(500,5000,500)
+                            hrp.CanCollide = false
+                            hrp.Transparency = 0.5
+                        else
+                            hrp.Size = Vector3.new(2,2,1)
+                            hrp.Transparency = 1
+                            hrp.CanCollide = true
+                        end
+                    else
+                        removeESP(v.Character)
+                        hrp.Size = Vector3.new(2,2,1)
+                        hrp.Transparency = 1
+                        hrp.CanCollide = true
+                    end
+                else
+                    removeESP(v.Character)
+                    hrp.Size = Vector3.new(2,2,1)
+                    hrp.Transparency = 1
+                    hrp.CanCollide = true
+                end
+            end
+        end
+    end
+end
+RunService.Heartbeat:Connect(updateESP)
+
+-- ==========================
+-- 🎨 ฟังก์ชันสร้าง UI Hub
+-- ==========================
+local function createHub()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "HackHubUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+
+    -- ปุ่ม C เปิด/ปิด
+    local ToggleButton = Instance.new("TextButton", ScreenGui)
+    ToggleButton.Size = UDim2.new(0,40,0,40)
+    ToggleButton.Position = UDim2.new(0,10,0,10)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    ToggleButton.Text = "C"
+    ToggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+    ToggleButton.TextScaled = true
+    local toggleCorner = Instance.new("UICorner", ToggleButton)
+    toggleCorner.CornerRadius = UDim.new(1,0)
+
+    -- Hack Hub Frame
+    local Frame = Instance.new("Frame", ScreenGui)
+    Frame.Size = UDim2.new(0,220,0,180)
+    Frame.Position = UDim2.new(0.35,0,0.3,0)
+    Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.Visible = true
+
+    local UICorner = Instance.new("UICorner", Frame)
+    UICorner.CornerRadius = UDim.new(0,12)
+    local UIStroke = Instance.new("UIStroke", Frame)
+    UIStroke.Thickness = 2
+    UIStroke.Color = Color3.fromRGB(80,80,80)
+
+    local Title = Instance.new("TextLabel", Frame)
+    Title.Size = UDim2.new(1,0,0,35)
+    Title.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    Title.Text = "🔥 Hack Hub"
+    Title.TextColor3 = Color3.fromRGB(255,255,255)
+    Title.TextScaled = true
+    local TitleCorner = Instance.new("UICorner", Title)
+    TitleCorner.CornerRadius = UDim.new(0,12)
+
+    -- ฟังก์ชันสร้างปุ่ม Toggle
+    local function createToggle(name, yPos, callback)
+        local button = Instance.new("TextButton", Frame)
+        button.Size = UDim2.new(1, -20, 0, 30)
+        button.Position = UDim2.new(0, 10, 0, yPos)
+        button.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        button.TextColor3 = Color3.fromRGB(255,255,255)
+        button.TextScaled = true
+        button.Text = name .. ": OFF"
+
+        local corner = Instance.new("UICorner", button)
+        corner.CornerRadius = UDim.new(0,8)
+        local stroke = Instance.new("UIStroke", button)
+        stroke.Thickness = 1
+        stroke.Color = Color3.fromRGB(120,120,120)
+
+        button.MouseEnter:Connect(function()
+            button.BackgroundColor3 = Color3.fromRGB(70,70,70)
+        end)
+        button.MouseLeave:Connect(function()
+            button.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        end)
+
+        local state = false
+        button.MouseButton1Click:Connect(function()
+            state = not state
+            button.Text = name .. ": " .. (state and "ON" or "OFF")
+            callback(state)
+        end)
+    end
+
+    -- ปุ่มฟีเจอร์
+    createToggle("ESP", 45, function(val) ESP_Enabled = val end)
+    createToggle("Hitbox", 80, function(val) Hitbox_Enabled = val end)
+    createToggle("Ammo Infinite", 115, function(val) Ammo_Enabled = val applyGunConfig() end)
+    createToggle("No Recoil", 150, function(val) NoRecoil_Enabled = val applyGunConfig() end)
+
+    -- กดปุ่ม C เพื่อซ่อน/เปิด Hack Hub
+    ToggleButton.MouseButton1Click:Connect(function()
+        Frame.Visible = not Frame.Visible
+    end)
+end
+
+-- สร้าง UI ตอนแรก
+createHub()
+
+-- กัน UI หายเวลา Respawn
+Player.CharacterAdded:Connect(function()
+    task.wait()
+    if not Player.PlayerGui:FindFirstChild("HackHubUI") then
+        createHub()
+    end
+end)
