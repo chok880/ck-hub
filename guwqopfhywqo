@@ -1,15 +1,20 @@
---// 🔥 Hack Hub UI + ESP/Hitbox Toggle Fixed + Ammo Infinite + No Recoil
+--// 🔥 Advanced Hack Hub UI + ESP/Hitbox + Ammo Infinite + No Recoil
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local Player = Players.LocalPlayer
 local Global = require(ReplicatedStorage.Libraries.Global)
 
+-- ==========================
 -- ตัวแปรเปิด/ปิดฟีเจอร์
+-- ==========================
 local ESP_Enabled = false
 local Hitbox_Enabled = false
 local Ammo_Enabled = false
 local NoRecoil_Enabled = false
+local HitboxSize = 50 -- ค่าขนาดเริ่มต้น
 
 -- ==========================
 -- ฟังก์ชันตั้งค่า Ammo + No Recoil
@@ -52,11 +57,34 @@ local function addESP(character, teamColor)
             highlight.FillColor = Color3.fromRGB(255, 255, 255)
         end
     end
+
+    -- BillboardGui แสดงชื่อ + HP
+    if not character:FindFirstChild("ESP_Billboard") then
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        local hum = character:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "ESP_Billboard"
+            billboard.Size = UDim2.new(0,100,0,40)
+            billboard.Adornee = hrp
+            billboard.AlwaysOnTop = true
+            billboard.Parent = character
+
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Size = UDim2.new(1,0,1,0)
+            textLabel.BackgroundTransparency = 1
+            textLabel.TextColor3 = Color3.fromRGB(255,255,255)
+            textLabel.TextScaled = true
+            textLabel.Parent = billboard
+        end
+    end
 end
 
 local function removeESP(character)
     local esp = character:FindFirstChild("ESP_Highlight")
     if esp then esp:Destroy() end
+    local billboard = character:FindFirstChild("ESP_Billboard")
+    if billboard then billboard:Destroy() end
 end
 
 local function updateESP()
@@ -64,19 +92,22 @@ local function updateESP()
         if v ~= Player and v.Character then
             local hrp = v.Character:FindFirstChild("HumanoidRootPart")
             local hum = v.Character:FindFirstChildOfClass("Humanoid")
-
             if hrp and hum then
                 if hum.Health > 0 then
                     if Global.Teams[v] ~= Global.Teams[Player] then
                         -- ✅ ESP Toggle
                         if ESP_Enabled then
                             addESP(v.Character, Global.Teams[v])
+                            local billboard = v.Character:FindFirstChild("ESP_Billboard")
+                            if billboard then
+                                billboard.TextLabel.Text = v.Name.." | HP: "..math.floor(hum.Health)
+                            end
                         else
                             removeESP(v.Character)
                         end
                         -- ✅ Hitbox Toggle
                         if Hitbox_Enabled then
-                            hrp.Size = Vector3.new(500,5000,500)
+                            hrp.Size = Vector3.new(HitboxSize,HitboxSize,HitboxSize)
                             hrp.CanCollide = false
                             hrp.Transparency = 0.5
                         else
@@ -100,12 +131,16 @@ local function updateESP()
         end
     end
 end
-RunService.Heartbeat:Connect(updateESP)
+RunService.RenderStepped:Connect(updateESP) -- อัปเดต ESP + Hitbox เร็วขึ้น
 
 -- ==========================
 -- 🎨 ฟังก์ชันสร้าง UI Hub
 -- ==========================
 local function createHub()
+    if Player.PlayerGui:FindFirstChild("HackHubUI") then
+        Player.PlayerGui.HackHubUI:Destroy()
+    end
+
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "HackHubUI"
     ScreenGui.ResetOnSpawn = false
@@ -113,9 +148,9 @@ local function createHub()
 
     -- ปุ่ม C เปิด/ปิด
     local ToggleButton = Instance.new("TextButton", ScreenGui)
-    ToggleButton.Size = UDim2.new(0,40,0,40)
+    ToggleButton.Size = UDim2.new(0,50,0,50)
     ToggleButton.Position = UDim2.new(0,10,0,10)
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(30,30,30)
     ToggleButton.Text = "C"
     ToggleButton.TextColor3 = Color3.fromRGB(255,255,255)
     ToggleButton.TextScaled = true
@@ -124,7 +159,7 @@ local function createHub()
 
     -- Hack Hub Frame
     local Frame = Instance.new("Frame", ScreenGui)
-    Frame.Size = UDim2.new(0,220,0,180)
+    Frame.Size = UDim2.new(0,250,0,280)
     Frame.Position = UDim2.new(0.35,0,0.3,0)
     Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
     Frame.Active = true
@@ -132,13 +167,13 @@ local function createHub()
     Frame.Visible = true
 
     local UICorner = Instance.new("UICorner", Frame)
-    UICorner.CornerRadius = UDim.new(0,12)
+    UICorner.CornerRadius = UDim.new(0,15)
     local UIStroke = Instance.new("UIStroke", Frame)
     UIStroke.Thickness = 2
     UIStroke.Color = Color3.fromRGB(80,80,80)
 
     local Title = Instance.new("TextLabel", Frame)
-    Title.Size = UDim2.new(1,0,0,35)
+    Title.Size = UDim2.new(1,0,0,40)
     Title.BackgroundColor3 = Color3.fromRGB(40,40,40)
     Title.Text = "🔥 Hack Hub"
     Title.TextColor3 = Color3.fromRGB(255,255,255)
@@ -149,12 +184,12 @@ local function createHub()
     -- ฟังก์ชันสร้างปุ่ม Toggle
     local function createToggle(name, yPos, callback)
         local button = Instance.new("TextButton", Frame)
-        button.Size = UDim2.new(1, -20, 0, 30)
-        button.Position = UDim2.new(0, 10, 0, yPos)
+        button.Size = UDim2.new(1,-20,0,30)
+        button.Position = UDim2.new(0,10,0,yPos)
         button.BackgroundColor3 = Color3.fromRGB(50,50,50)
         button.TextColor3 = Color3.fromRGB(255,255,255)
         button.TextScaled = true
-        button.Text = name .. ": OFF"
+        button.Text = name..": OFF"
 
         local corner = Instance.new("UICorner", button)
         corner.CornerRadius = UDim.new(0,8)
@@ -162,26 +197,58 @@ local function createHub()
         stroke.Thickness = 1
         stroke.Color = Color3.fromRGB(120,120,120)
 
-        button.MouseEnter:Connect(function()
-            button.BackgroundColor3 = Color3.fromRGB(70,70,70)
-        end)
-        button.MouseLeave:Connect(function()
-            button.BackgroundColor3 = Color3.fromRGB(50,50,50)
-        end)
+        button.MouseEnter:Connect(function() button.BackgroundColor3 = Color3.fromRGB(70,70,70) end)
+        button.MouseLeave:Connect(function() button.BackgroundColor3 = Color3.fromRGB(50,50,50) end)
 
         local state = false
         button.MouseButton1Click:Connect(function()
             state = not state
-            button.Text = name .. ": " .. (state and "ON" or "OFF")
+            button.Text = name..": "..(state and "ON" or "OFF")
             callback(state)
         end)
     end
 
+    -- ฟังก์ชันสร้าง Slider สำหรับ Hitbox Size
+    local function createSlider(name, yPos, min, max, default, callback)
+        local label = Instance.new("TextLabel", Frame)
+        label.Size = UDim2.new(1,-20,0,25)
+        label.Position = UDim2.new(0,10,0,yPos)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.fromRGB(255,255,255)
+        label.TextScaled = true
+        label.Text = name..": "..default
+
+        local sliderFrame = Instance.new("Frame", Frame)
+        sliderFrame.Size = UDim2.new(1,-20,0,20)
+        sliderFrame.Position = UDim2.new(0,10,0,yPos+25)
+        sliderFrame.BackgroundColor3 = Color3.fromRGB(60,60,60)
+        local sliderCorner = Instance.new("UICorner", sliderFrame)
+        sliderCorner.CornerRadius = UDim.new(0,6)
+
+        local sliderButton = Instance.new("TextButton", sliderFrame)
+        sliderButton.Size = UDim2.new(default/max,1,1,0)
+        sliderButton.BackgroundColor3 = Color3.fromRGB(200,200,200)
+        local sliderBtnCorner = Instance.new("UICorner", sliderButton)
+        sliderBtnCorner.CornerRadius = UDim.new(0,6)
+
+        sliderButton.Draggable = true
+        sliderButton.MouseMoved:Connect(function(x, y)
+            local relative = math.clamp(x - sliderFrame.AbsolutePosition.X,0,sliderFrame.AbsoluteSize.X)
+            sliderButton.Size = UDim2.new(relative/sliderFrame.AbsoluteSize.X,0,1,0)
+            local value = math.floor(min + (relative/sliderFrame.AbsoluteSize.X)*(max-min))
+            label.Text = name..": "..value
+            callback(value)
+        end)
+    end
+
     -- ปุ่มฟีเจอร์
-    createToggle("ESP", 45, function(val) ESP_Enabled = val end)
-    createToggle("Hitbox", 80, function(val) Hitbox_Enabled = val end)
-    createToggle("Ammo Infinite", 115, function(val) Ammo_Enabled = val applyGunConfig() end)
-    createToggle("No Recoil", 150, function(val) NoRecoil_Enabled = val applyGunConfig() end)
+    createToggle("ESP", 50, function(val) ESP_Enabled = val end)
+    createToggle("Hitbox", 90, function(val) Hitbox_Enabled = val end)
+    createToggle("Ammo Infinite", 130, function(val) Ammo_Enabled = val applyGunConfig() end)
+    createToggle("No Recoil", 170, function(val) NoRecoil_Enabled = val applyGunConfig() end)
+
+    -- Slider Hitbox Size
+    createSlider("Hitbox Size", 210, 10, 100, HitboxSize, function(val) HitboxSize = val end)
 
     -- กดปุ่ม C เพื่อซ่อน/เปิด Hack Hub
     ToggleButton.MouseButton1Click:Connect(function()
@@ -194,8 +261,6 @@ createHub()
 
 -- กัน UI หายเวลา Respawn
 Player.CharacterAdded:Connect(function()
-    task.wait()
-    if not Player.PlayerGui:FindFirstChild("HackHubUI") then
-        createHub()
-    end
+    task.wait(1)
+    createHub()
 end)
