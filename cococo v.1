@@ -1,4 +1,4 @@
--- 🔥 Ultimate Auto Fire & Gun Configuration System
+-- 🔥 Ultimate Hack Hub UI + ESP/Hitbox + Ammo Infinite + No Recoil + Auto Fire
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -75,58 +75,17 @@ local Themes = {
 }
 
 -- ==========================
--- 🔫 ระบบปรับแต่งปืนขั้นสูง
+-- ฟังก์ชันตั้งค่า Gun Config
 -- ==========================
-local WeaponConfigs = {}
-local OriginalConfigs = {}
-
--- บันทึกค่าตั้งต้นของปืนทั้งหมด
-local function saveOriginalConfigs()
-    for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
-        for _, gun in pairs(gunFolder:GetChildren()) do
-            if gun:FindFirstChild("Configuration") then
-                local configName = gun.Name
-                if not OriginalConfigs[configName] then
-                    OriginalConfigs[configName] = require(gun.Configuration)
-                end
-            end
-        end
-    end
-end
-
--- ฟังก์ชันตั้งค่า Gun Config แบบไดนามิก
 local function applyGunConfig()
     for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
         for _, gun in pairs(gunFolder:GetChildren()) do
             if gun:FindFirstChild("Configuration") then
                 local Config = require(gun.Configuration)
-                local gunName = gun.Name
-                
-                -- บันทึกค่าตั้งต้นถ้ายังไม่มี
-                if not OriginalConfigs[gunName] then
-                    OriginalConfigs[gunName] = table.clone(Config)
-                end
                 
                 -- Ammo Infinite
                 if Ammo_Enabled then
                     Config.maxAmmo = math.huge
-                    if Config.magSize then
-                        Config.magSize = math.huge
-                    end
-                    if Config.reserveAmmo then
-                        Config.reserveAmmo = math.huge
-                    end
-                else
-                    -- คืนค่าตั้งต้น
-                    if OriginalConfigs[gunName] then
-                        Config.maxAmmo = OriginalConfigs[gunName].maxAmmo
-                        if Config.magSize then
-                            Config.magSize = OriginalConfigs[gunName].magSize
-                        end
-                        if Config.reserveAmmo then
-                            Config.reserveAmmo = OriginalConfigs[gunName].reserveAmmo
-                        end
-                    end
                 end
 
                 -- No Recoil
@@ -135,85 +94,15 @@ local function applyGunConfig()
                     if Config.camKick then Config.camKick = 0 end
                     if Config.spread then Config.spread = 0 end
                     if Config.accuracy then Config.accuracy = 1 end
-                    if Config.hipSpread then Config.hipSpread = 0 end
-                    if Config.adsSpread then Config.adsSpread = 0 end
-                else
-                    -- คืนค่าตั้งต้น
-                    if OriginalConfigs[gunName] then
-                        if Config.recoil then Config.recoil = OriginalConfigs[gunName].recoil end
-                        if Config.camKick then Config.camKick = OriginalConfigs[gunName].camKick end
-                        if Config.spread then Config.spread = OriginalConfigs[gunName].spread end
-                        if Config.accuracy then Config.accuracy = OriginalConfigs[gunName].accuracy end
-                        if Config.hipSpread then Config.hipSpread = OriginalConfigs[gunName].hipSpread end
-                        if Config.adsSpread then Config.adsSpread = OriginalConfigs[gunName].adsSpread end
-                    end
                 end
 
                 -- Auto Fire
                 if AutoFire_Enabled then
                     Config.firemode = "automatic"
                     Config.automatic = true
-                    if Config.fireRate then
-                        Config.fireRate = 0.01 -- อัตรายิงเร็วสุด
-                    end
-                else
-                    -- คืนค่าตั้งต้น
-                    if OriginalConfigs[gunName] then
-                        Config.firemode = OriginalConfigs[gunName].firemode
-                        Config.automatic = OriginalConfigs[gunName].automatic
-                        if Config.fireRate then
-                            Config.fireRate = OriginalConfigs[gunName].fireRate
-                        end
-                    end
-                end
-                
-                -- บันทึกค่าปัจจุบัน
-                WeaponConfigs[gunName] = {
-                    ammo = Ammo_Enabled,
-                    noRecoil = NoRecoil_Enabled,
-                    autoFire = AutoFire_Enabled
-                }
-            end
-        end
-    end
-end
-
--- ฟังก์ชันรีเซ็ตปืนทั้งหมดเป็นค่าตั้งต้น
-local function resetAllGuns()
-    for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
-        for _, gun in pairs(gunFolder:GetChildren()) do
-            if gun:FindFirstChild("Configuration") then
-                local Config = require(gun.Configuration)
-                local gunName = gun.Name
-                
-                if OriginalConfigs[gunName] then
-                    for key, value in pairs(OriginalConfigs[gunName]) do
-                        Config[key] = value
-                    end
                 end
             end
         end
-    end
-    print("✅ รีเซ็ตปืนทั้งหมดเป็นค่าตั้งต้นแล้ว")
-end
-
--- ระบบตรวจสอบปืนใหม่อัตโนมัติ
-local function setupWeaponMonitoring()
-    local function monitorNewWeapons()
-        for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
-            for _, gun in pairs(gunFolder:GetChildren()) do
-                if gun:FindFirstChild("Configuration") and not WeaponConfigs[gun.Name] then
-                    print("🔫 พบปืนใหม่: " .. gun.Name)
-                    applyGunConfig()
-                end
-            end
-        end
-    end
-    
-    -- ตรวจสอบทุก 5 วินาที
-    while true do
-        monitorNewWeapons()
-        task.wait(5)
     end
 end
 
@@ -310,6 +199,7 @@ local function updateESP()
         end
     end
 end
+RunService.RenderStepped:Connect(updateESP)
 
 -- ==========================
 -- 🎨 ฟังก์ชันสร้างเอฟเฟกต์ UI
@@ -388,8 +278,8 @@ local function createHub()
     -- Main Hub Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 400, 0, 550)
-    MainFrame.Position = UDim2.new(0.5, -200, 0.5, -275)
+    MainFrame.Size = UDim2.new(0, 350, 0, 500)
+    MainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
     MainFrame.BackgroundColor3 = CurrentTheme.background
     MainFrame.Active = true
     MainFrame.Draggable = true
@@ -443,7 +333,7 @@ local function createHub()
     ContentFrame.BackgroundTransparency = 1
     ContentFrame.ScrollBarThickness = 5
     ContentFrame.ScrollBarImageColor3 = CurrentTheme.primary
-    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 700)
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
     ContentFrame.Parent = MainFrame
 
     -- ฟังก์ชันสร้างปุ่ม Toggle แบบพรีเมียม
@@ -520,12 +410,12 @@ local function createHub()
             state = not state
             updateToggle()
             callback(state)
-            applyGunConfig() -- เรียกใช้การตั้งค่าปืนทุกครั้งที่เปลี่ยนสถานะ
+            applyGunConfig()
         end)
 
         updateToggle()
         
-        return toggleFrame, state
+        return toggleFrame
     end
 
     -- สร้างปุ่มฟีเจอร์แบบพรีเมียม
@@ -534,20 +424,11 @@ local function createHub()
     yPos = yPos + 80
     createPremiumToggle("Hitbox Expander", "ทำให้ Hitbox ใหญ่ขึ้น", yPos, function(val) Hitbox_Enabled = val end)
     yPos = yPos + 80
-    createPremiumToggle("Infinite Ammo", "กระสุนไม่จำกัด", yPos, function(val) 
-        Ammo_Enabled = val 
-        applyGunConfig()
-    end)
+    createPremiumToggle("Infinite Ammo", "กระสุนไม่จำกัด", yPos, function(val) Ammo_Enabled = val end)
     yPos = yPos + 80
-    createPremiumToggle("No Recoil", "ปืนไม่สะท้อน + ไม่กระจาย", yPos, function(val) 
-        NoRecoil_Enabled = val 
-        applyGunConfig()
-    end)
+    createPremiumToggle("No Recoil", "ปืนไม่สะท้อน", yPos, function(val) NoRecoil_Enabled = val end)
     yPos = yPos + 80
-    createPremiumToggle("Auto Fire", "ยิงอัตโนมัติ + อัตรายิงเร็วสุด", yPos, function(val) 
-        AutoFire_Enabled = val 
-        applyGunConfig()
-    end)
+    createPremiumToggle("Auto Fire", "ยิงอัตโนมัติ", yPos, function(val) AutoFire_Enabled = val end)
     yPos = yPos + 80
 
     -- Custom Hitbox Size
@@ -664,52 +545,8 @@ local function createHub()
         applyThemeToUI(ScreenGui)
     end)
 
-    yPos = yPos + 110
-
-    -- Reset All Guns Button
-    local resetFrame = Instance.new("Frame")
-    resetFrame.Size = UDim2.new(1, 0, 0, 60)
-    resetFrame.Position = UDim2.new(0, 0, 0, yPos)
-    resetFrame.BackgroundColor3 = CurrentTheme.surface
-    resetFrame.Parent = ContentFrame
-    
-    local resetCorner = Instance.new("UICorner")
-    resetCorner.CornerRadius = UDim.new(0, 10)
-    resetCorner.Parent = resetFrame
-    
-    local resetStroke = Instance.new("UIStroke")
-    resetStroke.Color = Color3.fromRGB(255, 100, 100)
-    resetStroke.Thickness = 2
-    resetStroke.Parent = resetFrame
-
-    local resetButton = Instance.new("TextButton")
-    resetButton.Size = UDim2.new(1, -20, 1, -10)
-    resetButton.Position = UDim2.new(0, 10, 0, 5)
-    resetButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-    resetButton.Text = "🔄 RESET ALL GUNS"
-    resetButton.TextColor3 = CurrentTheme.text
-    resetButton.TextScaled = true
-    resetButton.Parent = resetFrame
-    
-    local resetButtonCorner = Instance.new("UICorner")
-    resetButtonCorner.CornerRadius = UDim.new(0, 8)
-    resetButtonCorner.Parent = resetButton
-
-    resetButton.MouseButton1Click:Connect(function()
-        resetAllGuns()
-        -- ปิดฟีเจอร์ทั้งหมด
-        ESP_Enabled = false
-        Hitbox_Enabled = false
-        Ammo_Enabled = false
-        NoRecoil_Enabled = false
-        AutoFire_Enabled = false
-        
-        -- รีเฟรช UI
-        createHub()
-    end)
-
     -- Update ContentFrame Canvas Size
-    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, yPos + 70)
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, yPos + 110)
 
     -- ปุ่มเปิด/ปิด UI
     ToggleButton.MouseButton1Click:Connect(function()
@@ -721,8 +558,8 @@ local function createHub()
             
             local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
             local tween = TweenService:Create(MainFrame, tweenInfo, {
-                Size = UDim2.new(0, 400, 0, 550),
-                Position = UDim2.new(0.5, -200, 0.5, -275)
+                Size = UDim2.new(0, 350, 0, 500),
+                Position = UDim2.new(0.5, -175, 0.5, -250)
             })
             tween:Play()
         end
@@ -775,7 +612,6 @@ end
 -- ==========================
 local characterConnections = {}
 local uiCheckConnection
-local espConnection
 
 local function cleanupConnections()
     for _, connection in pairs(characterConnections) do
@@ -787,24 +623,10 @@ local function cleanupConnections()
         uiCheckConnection:Disconnect()
         uiCheckConnection = nil
     end
-    
-    if espConnection then
-        espConnection:Disconnect()
-        espConnection = nil
-    end
 end
 
 local function initializeSystem()
     cleanupConnections()
-    
-    -- บันทึกค่าตั้งต้นของปืน
-    saveOriginalConfigs()
-    
-    -- เริ่มต้นตรวจสอบปืนใหม่
-    coroutine.wrap(setupWeaponMonitoring)()
-    
-    -- เริ่มต้น ESP System
-    espConnection = RunService.RenderStepped:Connect(updateESP)
     
     local success, errorMsg = pcall(createHub)
     if not success then
@@ -822,7 +644,6 @@ local function initializeSystem()
     end)
     
     print("✅ Ultimate Hack Hub เริ่มทำงานแล้ว!")
-    print("🔫 ระบบ Auto Fire & Gun Config พร้อมใช้งาน!")
 end
 
 local function setupCharacterHandling()
@@ -860,4 +681,9 @@ local function startHackSystem()
             break
         end
         
-       
+        task.wait()
+    end
+end
+
+-- 🔥 เริ่มระบบ!
+startHackSystem()
