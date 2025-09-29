@@ -213,7 +213,7 @@ local function setupWeaponMonitoring()
     -- ตรวจสอบทุก 5 วินาที
     while true do
         monitorNewWeapons()
-        task.wait(5)
+        task.wait()
     end
 end
 
