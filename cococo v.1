@@ -1,0 +1,863 @@
+-- 🔥 Ultimate Auto Fire & Gun Configuration System
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Player = Players.LocalPlayer
+local Global = require(ReplicatedStorage.Libraries.Global)
+
+-- ==========================
+-- ตัวแปรเปิด/ปิดฟีเจอร์
+-- ==========================
+local ESP_Enabled = false
+local Hitbox_Enabled = false
+local Ammo_Enabled = false
+local NoRecoil_Enabled = false
+local AutoFire_Enabled = false
+local HitboxSize = 50 -- ขนาดเริ่มต้น
+
+-- ==========================
+-- ธีมสีที่ปรับแต่งได้
+-- ==========================
+local CurrentTheme = {
+    name = "Cyber Punk",
+    primary = Color3.fromRGB(0, 255, 255),    -- สีหลัก
+    secondary = Color3.fromRGB(255, 0, 255),  -- สีรอง
+    background = Color3.fromRGB(10, 10, 30),  -- พื้นหลัง
+    surface = Color3.fromRGB(20, 20, 40),     -- พื้นผิว
+    text = Color3.fromRGB(255, 255, 255),     -- ข้อความ
+    accent = Color3.fromRGB(0, 200, 255)      -- สีเน้น
+}
+
+local Themes = {
+    ["Cyber Punk"] = {
+        primary = Color3.fromRGB(0, 255, 255),
+        secondary = Color3.fromRGB(255, 0, 255),
+        background = Color3.fromRGB(10, 10, 30),
+        surface = Color3.fromRGB(20, 20, 40),
+        text = Color3.fromRGB(255, 255, 255),
+        accent = Color3.fromRGB(0, 200, 255)
+    },
+    ["Neon Red"] = {
+        primary = Color3.fromRGB(255, 20, 20),
+        secondary = Color3.fromRGB(255, 100, 100),
+        background = Color3.fromRGB(20, 10, 10),
+        surface = Color3.fromRGB(40, 20, 20),
+        text = Color3.fromRGB(255, 255, 255),
+        accent = Color3.fromRGB(255, 50, 50)
+    },
+    ["Matrix Green"] = {
+        primary = Color3.fromRGB(0, 255, 0),
+        secondary = Color3.fromRGB(100, 255, 100),
+        background = Color3.fromRGB(0, 10, 0),
+        surface = Color3.fromRGB(10, 20, 10),
+        text = Color3.fromRGB(255, 255, 255),
+        accent = Color3.fromRGB(0, 200, 0)
+    },
+    ["Golden"] = {
+        primary = Color3.fromRGB(255, 215, 0),
+        secondary = Color3.fromRGB(255, 235, 100),
+        background = Color3.fromRGB(30, 25, 0),
+        surface = Color3.fromRGB(50, 40, 0),
+        text = Color3.fromRGB(255, 255, 255),
+        accent = Color3.fromRGB(255, 200, 0)
+    },
+    ["Purple Haze"] = {
+        primary = Color3.fromRGB(138, 43, 226),
+        secondary = Color3.fromRGB(186, 85, 211),
+        background = Color3.fromRGB(20, 10, 30),
+        surface = Color3.fromRGB(40, 20, 50),
+        text = Color3.fromRGB(255, 255, 255),
+        accent = Color3.fromRGB(147, 112, 219)
+    }
+}
+
+-- ==========================
+-- 🔫 ระบบปรับแต่งปืนขั้นสูง
+-- ==========================
+local WeaponConfigs = {}
+local OriginalConfigs = {}
+
+-- บันทึกค่าตั้งต้นของปืนทั้งหมด
+local function saveOriginalConfigs()
+    for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
+        for _, gun in pairs(gunFolder:GetChildren()) do
+            if gun:FindFirstChild("Configuration") then
+                local configName = gun.Name
+                if not OriginalConfigs[configName] then
+                    OriginalConfigs[configName] = require(gun.Configuration)
+                end
+            end
+        end
+    end
+end
+
+-- ฟังก์ชันตั้งค่า Gun Config แบบไดนามิก
+local function applyGunConfig()
+    for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
+        for _, gun in pairs(gunFolder:GetChildren()) do
+            if gun:FindFirstChild("Configuration") then
+                local Config = require(gun.Configuration)
+                local gunName = gun.Name
+                
+                -- บันทึกค่าตั้งต้นถ้ายังไม่มี
+                if not OriginalConfigs[gunName] then
+                    OriginalConfigs[gunName] = table.clone(Config)
+                end
+                
+                -- Ammo Infinite
+                if Ammo_Enabled then
+                    Config.maxAmmo = math.huge
+                    if Config.magSize then
+                        Config.magSize = math.huge
+                    end
+                    if Config.reserveAmmo then
+                        Config.reserveAmmo = math.huge
+                    end
+                else
+                    -- คืนค่าตั้งต้น
+                    if OriginalConfigs[gunName] then
+                        Config.maxAmmo = OriginalConfigs[gunName].maxAmmo
+                        if Config.magSize then
+                            Config.magSize = OriginalConfigs[gunName].magSize
+                        end
+                        if Config.reserveAmmo then
+                            Config.reserveAmmo = OriginalConfigs[gunName].reserveAmmo
+                        end
+                    end
+                end
+
+                -- No Recoil
+                if NoRecoil_Enabled then
+                    if Config.recoil then Config.recoil = 0 end
+                    if Config.camKick then Config.camKick = 0 end
+                    if Config.spread then Config.spread = 0 end
+                    if Config.accuracy then Config.accuracy = 1 end
+                    if Config.hipSpread then Config.hipSpread = 0 end
+                    if Config.adsSpread then Config.adsSpread = 0 end
+                else
+                    -- คืนค่าตั้งต้น
+                    if OriginalConfigs[gunName] then
+                        if Config.recoil then Config.recoil = OriginalConfigs[gunName].recoil end
+                        if Config.camKick then Config.camKick = OriginalConfigs[gunName].camKick end
+                        if Config.spread then Config.spread = OriginalConfigs[gunName].spread end
+                        if Config.accuracy then Config.accuracy = OriginalConfigs[gunName].accuracy end
+                        if Config.hipSpread then Config.hipSpread = OriginalConfigs[gunName].hipSpread end
+                        if Config.adsSpread then Config.adsSpread = OriginalConfigs[gunName].adsSpread end
+                    end
+                end
+
+                -- Auto Fire
+                if AutoFire_Enabled then
+                    Config.firemode = "automatic"
+                    Config.automatic = true
+                    if Config.fireRate then
+                        Config.fireRate = 0.01 -- อัตรายิงเร็วสุด
+                    end
+                else
+                    -- คืนค่าตั้งต้น
+                    if OriginalConfigs[gunName] then
+                        Config.firemode = OriginalConfigs[gunName].firemode
+                        Config.automatic = OriginalConfigs[gunName].automatic
+                        if Config.fireRate then
+                            Config.fireRate = OriginalConfigs[gunName].fireRate
+                        end
+                    end
+                end
+                
+                -- บันทึกค่าปัจจุบัน
+                WeaponConfigs[gunName] = {
+                    ammo = Ammo_Enabled,
+                    noRecoil = NoRecoil_Enabled,
+                    autoFire = AutoFire_Enabled
+                }
+            end
+        end
+    end
+end
+
+-- ฟังก์ชันรีเซ็ตปืนทั้งหมดเป็นค่าตั้งต้น
+local function resetAllGuns()
+    for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
+        for _, gun in pairs(gunFolder:GetChildren()) do
+            if gun:FindFirstChild("Configuration") then
+                local Config = require(gun.Configuration)
+                local gunName = gun.Name
+                
+                if OriginalConfigs[gunName] then
+                    for key, value in pairs(OriginalConfigs[gunName]) do
+                        Config[key] = value
+                    end
+                end
+            end
+        end
+    end
+    print("✅ รีเซ็ตปืนทั้งหมดเป็นค่าตั้งต้นแล้ว")
+end
+
+-- ระบบตรวจสอบปืนใหม่อัตโนมัติ
+local function setupWeaponMonitoring()
+    local function monitorNewWeapons()
+        for _, gunFolder in pairs(ReplicatedStorage.Weapons.Guns:GetChildren()) do
+            for _, gun in pairs(gunFolder:GetChildren()) do
+                if gun:FindFirstChild("Configuration") and not WeaponConfigs[gun.Name] then
+                    print("🔫 พบปืนใหม่: " .. gun.Name)
+                    applyGunConfig()
+                end
+            end
+        end
+    end
+    
+    -- ตรวจสอบทุก 5 วินาที
+    while true do
+        monitorNewWeapons()
+        task.wait(5)
+    end
+end
+
+-- ==========================
+-- ESP Wallhack + Hitbox
+-- ==========================
+local function addESP(character, teamColor)
+    if not character:FindFirstChild("ESP_Highlight") then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ESP_Highlight"
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = character
+
+        if teamColor == "Blue" then
+            highlight.FillColor = Color3.fromRGB(0, 120, 255)
+        elseif teamColor == "Red" then
+            highlight.FillColor = Color3.fromRGB(255, 60, 60)
+        else
+            highlight.FillColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+
+    -- BillboardGui แสดงชื่อ + HP
+    if not character:FindFirstChild("ESP_Billboard") then
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        local hum = character:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "ESP_Billboard"
+            billboard.Size = UDim2.new(0,120,0,40)
+            billboard.Adornee = hrp
+            billboard.AlwaysOnTop = true
+            billboard.Parent = character
+
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Size = UDim2.new(1,0,1,0)
+            textLabel.BackgroundTransparency = 1
+            textLabel.TextColor3 = Color3.fromRGB(255,255,255)
+            textLabel.TextScaled = true
+            textLabel.Parent = billboard
+        end
+    end
+end
+
+local function removeESP(character)
+    local esp = character:FindFirstChild("ESP_Highlight")
+    if esp then esp:Destroy() end
+    local billboard = character:FindFirstChild("ESP_Billboard")
+    if billboard then billboard:Destroy() end
+end
+
+local function updateESP()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= Player and v.Character then
+            local hrp = v.Character:FindFirstChild("HumanoidRootPart")
+            local hum = v.Character:FindFirstChildOfClass("Humanoid")
+            if hrp and hum then
+                if hum.Health > 0 then
+                    if Global.Teams[v] ~= Global.Teams[Player] then
+                        -- ✅ ESP Toggle
+                        if ESP_Enabled then
+                            addESP(v.Character, Global.Teams[v])
+                            local billboard = v.Character:FindFirstChild("ESP_Billboard")
+                            if billboard then
+                                billboard.TextLabel.Text = v.Name.." | HP: "..math.floor(hum.Health)
+                            end
+                        else
+                            removeESP(v.Character)
+                        end
+                        -- ✅ Hitbox Toggle
+                        if Hitbox_Enabled then
+                            hrp.Size = Vector3.new(HitboxSize,HitboxSize,HitboxSize)
+                            hrp.CanCollide = false
+                            hrp.Transparency = 0.5
+                        else
+                            hrp.Size = Vector3.new(2,2,1)
+                            hrp.Transparency = 1
+                            hrp.CanCollide = true
+                        end
+                    else
+                        removeESP(v.Character)
+                        hrp.Size = Vector3.new(2,2,1)
+                        hrp.Transparency = 1
+                        hrp.CanCollide = true
+                    end
+                else
+                    removeESP(v.Character)
+                    hrp.Size = Vector3.new(2,2,1)
+                    hrp.Transparency = 1
+                    hrp.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
+-- ==========================
+-- 🎨 ฟังก์ชันสร้างเอฟเฟกต์ UI
+-- ==========================
+local function createGlowEffect(frame)
+    local glow = Instance.new("UIStroke")
+    glow.Name = "UIGlow"
+    glow.Thickness = 2
+    glow.Color = CurrentTheme.primary
+    glow.Transparency = 0.7
+    glow.Parent = frame
+    
+    -- เอฟเฟกต์พัลส์
+    local pulseConn
+    pulseConn = RunService.Heartbeat:Connect(function()
+        glow.Transparency = 0.3 + math.abs(math.sin(tick() * 3)) * 0.4
+    end)
+    
+    return glow, pulseConn
+end
+
+local function applyThemeToUI(screenGui)
+    for _, obj in pairs(screenGui:GetDescendants()) do
+        if obj:IsA("Frame") then
+            if obj.Name == "TitleFrame" then
+                obj.BackgroundColor3 = CurrentTheme.primary
+            elseif obj.Name:find("Button") then
+                obj.BackgroundColor3 = CurrentTheme.surface
+            else
+                obj.BackgroundColor3 = CurrentTheme.background
+            end
+        elseif obj:IsA("TextButton") or obj:IsA("TextLabel") then
+            obj.TextColor3 = CurrentTheme.text
+        elseif obj:IsA("UIStroke") and obj.Name == "UIGlow" then
+            obj.Color = CurrentTheme.primary
+        elseif obj:IsA("TextBox") then
+            obj.BackgroundColor3 = CurrentTheme.surface
+            obj.TextColor3 = CurrentTheme.text
+        end
+    end
+end
+
+-- ==========================
+-- 🎨 สร้าง UI Hack Hub แบบพรีเมียม
+-- ==========================
+local function createHub()
+    -- ลบ UI เก่าถ้ามี
+    if Player.PlayerGui:FindFirstChild("HackHubUI") then
+        Player.PlayerGui.HackHubUI:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "HackHubUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+
+    -- ปุ่ม C เปิด/ปิด (ลอยได้)
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Name = "ToggleButton"
+    ToggleButton.Size = UDim2.new(0, 60, 0, 60)
+    ToggleButton.Position = UDim2.new(0, 20, 0.5, -30)
+    ToggleButton.BackgroundColor3 = CurrentTheme.primary
+    ToggleButton.Text = "🎮"
+    ToggleButton.TextColor3 = CurrentTheme.text
+    ToggleButton.TextScaled = true
+    ToggleButton.ZIndex = 10
+    ToggleButton.Parent = ScreenGui
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(1, 0)
+    toggleCorner.Parent = ToggleButton
+    
+    local toggleGlow, togglePulse = createGlowEffect(ToggleButton)
+
+    -- Main Hub Frame
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 400, 0, 550)
+    MainFrame.Position = UDim2.new(0.5, -200, 0.5, -275)
+    MainFrame.BackgroundColor3 = CurrentTheme.background
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Visible = false
+    MainFrame.Parent = ScreenGui
+
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 15)
+    mainCorner.Parent = MainFrame
+    
+    local mainGlow, mainPulse = createGlowEffect(MainFrame)
+
+    -- Title Bar
+    local TitleFrame = Instance.new("Frame")
+    TitleFrame.Name = "TitleFrame"
+    TitleFrame.Size = UDim2.new(1, 0, 0, 50)
+    TitleFrame.BackgroundColor3 = CurrentTheme.primary
+    TitleFrame.Parent = MainFrame
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 15)
+    titleCorner.Parent = TitleFrame
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -60, 1, 0)
+    Title.Position = UDim2.new(0, 10, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = "🔥 ULTIMATE HACK HUB"
+    Title.TextColor3 = CurrentTheme.text
+    Title.TextScaled = true
+    Title.Font = Enum.Font.GothamBlack
+    Title.Parent = TitleFrame
+
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Position = UDim2.new(1, -40, 0.5, -15)
+    CloseButton.BackgroundColor3 = CurrentTheme.secondary
+    CloseButton.Text = "X"
+    CloseButton.TextColor3 = CurrentTheme.text
+    CloseButton.TextScaled = true
+    CloseButton.Parent = TitleFrame
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(1, 0)
+    closeCorner.Parent = CloseButton
+
+    -- Content Scrolling Frame
+    local ContentFrame = Instance.new("ScrollingFrame")
+    ContentFrame.Size = UDim2.new(1, -20, 1, -70)
+    ContentFrame.Position = UDim2.new(0, 10, 0, 60)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.ScrollBarThickness = 5
+    ContentFrame.ScrollBarImageColor3 = CurrentTheme.primary
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 700)
+    ContentFrame.Parent = MainFrame
+
+    -- ฟังก์ชันสร้างปุ่ม Toggle แบบพรีเมียม
+    local function createPremiumToggle(name, description, yPos, callback)
+        local toggleFrame = Instance.new("Frame")
+        toggleFrame.Size = UDim2.new(1, 0, 0, 70)
+        toggleFrame.Position = UDim2.new(0, 0, 0, yPos)
+        toggleFrame.BackgroundColor3 = CurrentTheme.surface
+        toggleFrame.Parent = ContentFrame
+        
+        local toggleCorner = Instance.new("UICorner")
+        toggleCorner.CornerRadius = UDim.new(0, 10)
+        toggleCorner.Parent = toggleFrame
+        
+        local toggleStroke = Instance.new("UIStroke")
+        toggleStroke.Color = CurrentTheme.primary
+        toggleStroke.Thickness = 1
+        toggleStroke.Parent = toggleFrame
+
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(0.7, -10, 0, 30)
+        titleLabel.Position = UDim2.new(0, 10, 0, 5)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = name
+        titleLabel.TextColor3 = CurrentTheme.text
+        titleLabel.TextScaled = true
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.Parent = toggleFrame
+
+        local descLabel = Instance.new("TextLabel")
+        descLabel.Size = UDim2.new(0.7, -10, 0, 30)
+        descLabel.Position = UDim2.new(0, 10, 0, 35)
+        descLabel.BackgroundTransparency = 1
+        descLabel.Text = description
+        descLabel.TextColor3 = CurrentTheme.text
+        descLabel.TextScaled = false
+        descLabel.TextSize = 12
+        descLabel.TextXAlignment = Enum.TextXAlignment.Left
+        descLabel.TextTransparency = 0.3
+        descLabel.Parent = toggleFrame
+
+        local toggleButton = Instance.new("TextButton")
+        toggleButton.Size = UDim2.new(0, 80, 0, 35)
+        toggleButton.Position = UDim2.new(1, -90, 0.5, -17)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        toggleButton.Text = "OFF"
+        toggleButton.TextColor3 = CurrentTheme.text
+        toggleButton.TextScaled = true
+        toggleButton.Parent = toggleFrame
+        
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 8)
+        buttonCorner.Parent = toggleButton
+        
+        local buttonStroke = Instance.new("UIStroke")
+        buttonStroke.Color = CurrentTheme.text
+        buttonStroke.Thickness = 1
+        buttonStroke.Parent = toggleButton
+
+        local state = false
+        
+        local function updateToggle()
+            if state then
+                toggleButton.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+                toggleButton.Text = "ON"
+            else
+                toggleButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                toggleButton.Text = "OFF"
+            end
+        end
+
+        toggleButton.MouseButton1Click:Connect(function()
+            state = not state
+            updateToggle()
+            callback(state)
+            applyGunConfig() -- เรียกใช้การตั้งค่าปืนทุกครั้งที่เปลี่ยนสถานะ
+        end)
+
+        updateToggle()
+        
+        return toggleFrame, state
+    end
+
+    -- สร้างปุ่มฟีเจอร์แบบพรีเมียม
+    local yPos = 0
+    createPremiumToggle("ESP Wallhack", "มองเห็นศัตรูผ่านกำแพง", yPos, function(val) ESP_Enabled = val end)
+    yPos = yPos + 80
+    createPremiumToggle("Hitbox Expander", "ทำให้ Hitbox ใหญ่ขึ้น", yPos, function(val) Hitbox_Enabled = val end)
+    yPos = yPos + 80
+    createPremiumToggle("Infinite Ammo", "กระสุนไม่จำกัด", yPos, function(val) 
+        Ammo_Enabled = val 
+        applyGunConfig()
+    end)
+    yPos = yPos + 80
+    createPremiumToggle("No Recoil", "ปืนไม่สะท้อน + ไม่กระจาย", yPos, function(val) 
+        NoRecoil_Enabled = val 
+        applyGunConfig()
+    end)
+    yPos = yPos + 80
+    createPremiumToggle("Auto Fire", "ยิงอัตโนมัติ + อัตรายิงเร็วสุด", yPos, function(val) 
+        AutoFire_Enabled = val 
+        applyGunConfig()
+    end)
+    yPos = yPos + 80
+
+    -- Custom Hitbox Size
+    local hitboxFrame = Instance.new("Frame")
+    hitboxFrame.Size = UDim2.new(1, 0, 0, 80)
+    hitboxFrame.Position = UDim2.new(0, 0, 0, yPos)
+    hitboxFrame.BackgroundColor3 = CurrentTheme.surface
+    hitboxFrame.Parent = ContentFrame
+    
+    local hitboxCorner = Instance.new("UICorner")
+    hitboxCorner.CornerRadius = UDim.new(0, 10)
+    hitboxCorner.Parent = hitboxFrame
+    
+    local hitboxStroke = Instance.new("UIStroke")
+    hitboxStroke.Color = CurrentTheme.primary
+    hitboxStroke.Thickness = 1
+    hitboxStroke.Parent = hitboxFrame
+
+    local hitboxLabel = Instance.new("TextLabel")
+    hitboxLabel.Size = UDim2.new(1, -20, 0, 30)
+    hitboxLabel.Position = UDim2.new(0, 10, 0, 5)
+    hitboxLabel.BackgroundTransparency = 1
+    hitboxLabel.Text = "Hitbox Size: " .. HitboxSize
+    hitboxLabel.TextColor3 = CurrentTheme.text
+    hitboxLabel.TextScaled = true
+    hitboxLabel.Parent = hitboxFrame
+
+    local hitboxBox = Instance.new("TextBox")
+    hitboxBox.Size = UDim2.new(1, -20, 0, 30)
+    hitboxBox.Position = UDim2.new(0, 10, 0, 40)
+    hitboxBox.BackgroundColor3 = CurrentTheme.background
+    hitboxBox.TextColor3 = CurrentTheme.text
+    hitboxBox.PlaceholderColor3 = CurrentTheme.text
+    hitboxBox.PlaceholderText = "Enter hitbox size..."
+    hitboxBox.TextScaled = true
+    hitboxBox.Text = tostring(HitboxSize)
+    hitboxBox.ClearTextOnFocus = false
+    hitboxBox.Parent = hitboxFrame
+    
+    local hitboxBoxCorner = Instance.new("UICorner")
+    hitboxBoxCorner.CornerRadius = UDim.new(0, 8)
+    hitboxBoxCorner.Parent = hitboxBox
+
+    hitboxBox.FocusLost:Connect(function()
+        local val = tonumber(hitboxBox.Text)
+        if val and val > 0 then
+            HitboxSize = val
+            hitboxLabel.Text = "Hitbox Size: " .. HitboxSize
+        else
+            hitboxBox.Text = tostring(HitboxSize)
+        end
+    end)
+
+    yPos = yPos + 90
+
+    -- Theme Selector
+    local themeFrame = Instance.new("Frame")
+    themeFrame.Size = UDim2.new(1, 0, 0, 100)
+    themeFrame.Position = UDim2.new(0, 0, 0, yPos)
+    themeFrame.BackgroundColor3 = CurrentTheme.surface
+    themeFrame.Parent = ContentFrame
+    
+    local themeCorner = Instance.new("UICorner")
+    themeCorner.CornerRadius = UDim.new(0, 10)
+    themeCorner.Parent = themeFrame
+    
+    local themeStroke = Instance.new("UIStroke")
+    themeStroke.Color = CurrentTheme.primary
+    themeStroke.Thickness = 1
+    themeStroke.Parent = themeFrame
+
+    local themeLabel = Instance.new("TextLabel")
+    themeLabel.Size = UDim2.new(1, -20, 0, 30)
+    themeLabel.Position = UDim2.new(0, 10, 0, 5)
+    themeLabel.BackgroundTransparency = 1
+    themeLabel.Text = "UI Theme: " .. CurrentTheme.name
+    themeLabel.TextColor3 = CurrentTheme.text
+    themeLabel.TextScaled = true
+    themeLabel.Parent = themeFrame
+
+    local themeDropdown = Instance.new("TextButton")
+    themeDropdown.Size = UDim2.new(1, -20, 0, 40)
+    themeDropdown.Position = UDim2.new(0, 10, 0, 40)
+    themeDropdown.BackgroundColor3 = CurrentTheme.background
+    themeDropdown.Text = "Change Theme"
+    themeDropdown.TextColor3 = CurrentTheme.text
+    themeDropdown.TextScaled = true
+    themeDropdown.Parent = themeFrame
+    
+    local themeDropdownCorner = Instance.new("UICorner")
+    themeDropdownCorner.CornerRadius = UDim.new(0, 8)
+    themeDropdownCorner.Parent = themeDropdown
+
+    themeDropdown.MouseButton1Click:Connect(function()
+        local themeNames = {}
+        for name, _ in pairs(Themes) do
+            table.insert(themeNames, name)
+        end
+        
+        local currentIndex = 1
+        for i, name in ipairs(themeNames) do
+            if name == CurrentTheme.name then
+                currentIndex = i
+                break
+            end
+        end
+        
+        currentIndex = currentIndex % #themeNames + 1
+        local newThemeName = themeNames[currentIndex]
+        CurrentTheme = Themes[newThemeName]
+        CurrentTheme.name = newThemeName
+        
+        themeLabel.Text = "UI Theme: " .. newThemeName
+        applyThemeToUI(ScreenGui)
+    end)
+
+    yPos = yPos + 110
+
+    -- Reset All Guns Button
+    local resetFrame = Instance.new("Frame")
+    resetFrame.Size = UDim2.new(1, 0, 0, 60)
+    resetFrame.Position = UDim2.new(0, 0, 0, yPos)
+    resetFrame.BackgroundColor3 = CurrentTheme.surface
+    resetFrame.Parent = ContentFrame
+    
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 10)
+    resetCorner.Parent = resetFrame
+    
+    local resetStroke = Instance.new("UIStroke")
+    resetStroke.Color = Color3.fromRGB(255, 100, 100)
+    resetStroke.Thickness = 2
+    resetStroke.Parent = resetFrame
+
+    local resetButton = Instance.new("TextButton")
+    resetButton.Size = UDim2.new(1, -20, 1, -10)
+    resetButton.Position = UDim2.new(0, 10, 0, 5)
+    resetButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    resetButton.Text = "🔄 RESET ALL GUNS"
+    resetButton.TextColor3 = CurrentTheme.text
+    resetButton.TextScaled = true
+    resetButton.Parent = resetFrame
+    
+    local resetButtonCorner = Instance.new("UICorner")
+    resetButtonCorner.CornerRadius = UDim.new(0, 8)
+    resetButtonCorner.Parent = resetButton
+
+    resetButton.MouseButton1Click:Connect(function()
+        resetAllGuns()
+        -- ปิดฟีเจอร์ทั้งหมด
+        ESP_Enabled = false
+        Hitbox_Enabled = false
+        Ammo_Enabled = false
+        NoRecoil_Enabled = false
+        AutoFire_Enabled = false
+        
+        -- รีเฟรช UI
+        createHub()
+    end)
+
+    -- Update ContentFrame Canvas Size
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, yPos + 70)
+
+    -- ปุ่มเปิด/ปิด UI
+    ToggleButton.MouseButton1Click:Connect(function()
+        MainFrame.Visible = not MainFrame.Visible
+        if MainFrame.Visible then
+            -- เอฟเฟกต์เมื่อเปิด
+            MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+            
+            local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            local tween = TweenService:Create(MainFrame, tweenInfo, {
+                Size = UDim2.new(0, 400, 0, 550),
+                Position = UDim2.new(0.5, -200, 0.5, -275)
+            })
+            tween:Play()
+        end
+    end)
+
+    CloseButton.MouseButton1Click:Connect(function()
+        MainFrame.Visible = false
+    end)
+
+    -- ระบบลากปุ่ม Toggle
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    ToggleButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = ToggleButton.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    ToggleButton.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            ToggleButton.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    return ScreenGui
+end
+
+-- ==========================
+-- 🚀 ระบบรีคอนเนคชันขั้นสูง
+-- ==========================
+local characterConnections = {}
+local uiCheckConnection
+local espConnection
+
+local function cleanupConnections()
+    for _, connection in pairs(characterConnections) do
+        if connection then connection:Disconnect() end
+    end
+    characterConnections = {}
+    
+    if uiCheckConnection then
+        uiCheckConnection:Disconnect()
+        uiCheckConnection = nil
+    end
+    
+    if espConnection then
+        espConnection:Disconnect()
+        espConnection = nil
+    end
+end
+
+local function initializeSystem()
+    cleanupConnections()
+    
+    -- บันทึกค่าตั้งต้นของปืน
+    saveOriginalConfigs()
+    
+    -- เริ่มต้นตรวจสอบปืนใหม่
+    coroutine.wrap(setupWeaponMonitoring)()
+    
+    -- เริ่มต้น ESP System
+    espConnection = RunService.RenderStepped:Connect(updateESP)
+    
+    local success, errorMsg = pcall(createHub)
+    if not success then
+        warn("❌ เกิดข้อผิดพลาดในการสร้าง UI: " .. tostring(errorMsg))
+        task.delay(2, initializeSystem)
+        return
+    end
+    
+    uiCheckConnection = RunService.Heartbeat:Connect(function()
+        local playerGui = Player:FindFirstChild("PlayerGui")
+        if not playerGui or not playerGui:FindFirstChild("HackHubUI") then
+            warn("🔄 UI หาย! กู้คืนอัตโนมัติ...")
+            initializeSystem()
+        end
+    end)
+    
+    print("✅ Ultimate Hack Hub เริ่มทำงานแล้ว!")
+    print("🔫 ระบบ Auto Fire & Gun Config พร้อมใช้งาน!")
+end
+
+local function setupCharacterHandling()
+    characterConnections.characterAdded = Player.CharacterAdded:Connect(function(character)
+        print("🎮 ตัวละครใหม่เกิดแล้ว!")
+        character:WaitForChild("Humanoid")
+        task.wait(1.5)
+        initializeSystem()
+    end)
+    
+    characterConnections.characterRemoving = Player.CharacterRemoving:Connect(function()
+        print("💀 ตัวละครกำลังหาย...")
+    end)
+end
+
+local function startHackSystem()
+    print("🚀 เริ่มต้นระบบ Ultimate Hack Hub...")
+    
+    if not Player.Character then
+        Player.CharacterAdded:Wait()
+    end
+    
+    setupCharacterHandling()
+    initializeSystem()
+    
+    while true do
+        local success, err = pcall(function()
+            if not Player or not Player.Parent then
+                error("ผู้เล่นออกจากเกมแล้ว")
+            end
+        end)
+        
+        if not success then
+            warn("❌ ระบบหยุดทำงาน: " .. tostring(err))
+            break
+        end
+        
+       
