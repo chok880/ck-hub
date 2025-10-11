@@ -1,0 +1,102 @@
+-- โหลด Ash-Libs GUI
+local GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/BloodLetters/Ash-Libs/refs/heads/main/source.lua"))()
+
+-- สร้างหน้าต่างหลัก
+GUI:CreateMain({
+    Name = "Chok Hub",
+    title = "Chok Hub v.1",
+    ToggleUI = "K",
+    WindowIcon = "shield",
+    Theme = {
+        Background = Color3.fromRGB(20, 20, 30),
+        Secondary = Color3.fromRGB(35, 35, 45),
+        Accent = Color3.fromRGB(0, 170, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextSecondary = Color3.fromRGB(200, 200, 200),
+        Border = Color3.fromRGB(60, 60, 70),
+        NavBackground = Color3.fromRGB(25, 25, 35)
+    }
+})
+
+-- แท็บหลัก
+local main = GUI:CreateTab("Main", "home")
+
+-- ส่วนหลักของระบบ
+GUI:CreateSection({
+    parent = main,
+    text = "⚙️ ระบบพัฒนาเมือง & กองทัพ"
+})
+
+-- RemoteEvent
+local remote = game:GetService("ReplicatedStorage").RemoteEvent_1
+local AntiAircraftCount = 12000
+
+-- ฟังก์ชันพัฒนาเมือง
+local function DevelopAll(mode)
+	for _, region in pairs(workspace.Regions:GetChildren()) do
+		pcall(function()
+			remote:FireServer("DevelopTile", region, mode)
+		end)
+	end
+	GUI:CreateNotify({ title = "✅ สำเร็จ!", description = "พัฒนาเมืองทั้งหมดแบบ " .. mode })
+end
+
+-- ฟังก์ชันสร้างกองทัพ AntiAircraft
+local function CreateAntiAircraftAll()
+	for _, region in pairs(workspace.Regions:GetChildren()) do
+		pcall(function()
+			remote:FireServer("CreateArmyOnTile", region, "AntiAircraft", AntiAircraftCount)
+		end)
+	end
+	GUI:CreateNotify({
+		title = "🚀 สร้างกองทัพแล้ว!",
+		description = "AntiAircraft ทั้งหมด: " .. tostring(AntiAircraftCount)
+	})
+end
+
+-- ปุ่ม Develop Tier
+GUI:CreateButton({
+    parent = main,
+    text = "⚡ Develop All (Tier)",
+    callback = function()
+        DevelopAll("Tier")
+    end
+})
+
+-- ปุ่ม Develop Def
+GUI:CreateButton({
+    parent = main,
+    text = "🛡️ Develop All (Def)",
+    callback = function()
+        DevelopAll("Def")
+    end
+})
+
+-- Dropdown เลือกจำนวน AntiAircraft
+GUI:CreateDropdown({
+    parent = main,
+    text = "🛫 เลือกจำนวน AntiAircraft",
+    options = {"1000", "2000", "5000", "10000", "30000", "50000"},
+    callback = function(selected)
+        AntiAircraftCount = tonumber(selected)
+        GUI:CreateNotify({
+            title = "🔧 ปรับจำนวนแล้ว!",
+            description = "จำนวน AntiAircraft = " .. selected
+        })
+    end
+})
+
+-- ปุ่มสร้าง AntiAircraft
+GUI:CreateButton({
+    parent = main,
+    text = "🚀 Create AntiAircraft All",
+    callback = function()
+        CreateAntiAircraftAll()
+    end
+})
+
+-- 🔑 ปุ่มเปิด/ปิด UI มือถือ & PC
+GUI:CreateNotify({
+    title = "📱 พร้อมใช้งาน!",
+    description = "กด K เพื่อเปิด/ปิด UI ได้ทั้งบนมือถือและ PC"
+})
