@@ -1,165 +1,229 @@
--- โหลด Luna Interface
-local Luna = loadstring(game:HttpGet("https://raw.githubusercontent.com/Nebula-Softworks/Luna-Interface-Suite/refs/heads/master/source.lua"))()
+-- โหลด GUI Ash-Libs
+local GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/BloodLetters/Ash-Libs/refs/heads/main/source.lua"))()
 
--- Services
+-- ตั้งค่าหน้าหลัก
+GUI:CreateMain({
+    Name = "Ashlabs",
+    title = "Ashlabs GUI v2",
+    ToggleUI = "K",
+    WindowIcon = "home",
+    Theme = {
+        Background = Color3.fromRGB(25, 25, 35),
+        Secondary = Color3.fromRGB(35, 35, 45),
+        Accent = Color3.fromRGB(138, 43, 226),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextSecondary = Color3.fromRGB(180, 180, 180),
+        Border = Color3.fromRGB(50, 50, 60),
+        NavBackground = Color3.fromRGB(20, 20, 30)
+    },
+    Blur = { Enable = false, value = 0.2 }
+})
+
+-- แท็บหลัก
+local main = GUI:CreateTab("หลัก", "home")
+GUI:CreateSection({ parent = main, text = "ระบบเก็บผลไม้และสัตว์อัตโนมัติ (v2)" })
+
+-- ตัวแปรหลัก
+getgenv().AutoCow = false
+getgenv().AutoChicken = false
+getgenv().AutoMango = false
+getgenv().AutoTree = false
+getgenv().AutoDurian = false
+getgenv().AutoPineapple = false
+
+-- ปุ่มเปิด/ปิดแต่ละระบบ
+GUI:CreateToggle({ parent = main, text = "🐄 เก็บวัวอัตโนมัติ", default = false, callback = function(v) getgenv().AutoCow = v end })
+GUI:CreateToggle({ parent = main, text = "🐔 เก็บไก่อัตโนมัติ", default = false, callback = function(v) getgenv().AutoChicken = v end })
+GUI:CreateToggle({ parent = main, text = "🥭 เก็บมะม่วงอัตโนมัติ", default = false, callback = function(v) getgenv().AutoMango = v end })
+GUI:CreateToggle({ parent = main, text = "🌳 เก็บต้นไม้อัตโนมัติ", default = false, callback = function(v) getgenv().AutoTree = v end })
+GUI:CreateToggle({ parent = main, text = "🥥 เก็บทุเรียนอัตโนมัติ", default = false, callback = function(v) getgenv().AutoDurian = v end })
+GUI:CreateToggle({ parent = main, text = "🍍 เก็บสับปะรดอัตโนมัติ", default = false, callback = function(v) getgenv().AutoPineapple = v end })
+
+-- 🧠 ตรวจจับตัวละครใหม่เสมอ
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-
--- Character Setup
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 
--- ค่าปรับความเร็ว Auto Farm
-local go = 0.3
-local to = 0.5
-
--- ตัวแปรควบคุม
-getgenv().AutoFarmCow = false
-getgenv().AutoFarmMango = false
-
--- GUI Teleport Button (วาร์ปไปผู้เล่น/NPC ที่ตาย)
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "TeleportUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
-
-local TeleportButton = Instance.new("TextButton")
-TeleportButton.Size = UDim2.new(0, 180, 0, 50)
-TeleportButton.Position = UDim2.new(0.5, -90, 0.85, 0)
-TeleportButton.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-TeleportButton.TextColor3 = Color3.new(1, 1, 1)
-TeleportButton.Text = "วาร์ปไปผู้เล่น/NPC ที่ตาย"
-TeleportButton.Font = Enum.Font.SourceSansBold
-TeleportButton.TextSize = 18
-TeleportButton.Parent = ScreenGui
-
--- ฟังก์ชันวาร์ปไปผู้เล่น/NPC ที่ตาย
-local function teleportToDeadCharacter()
-	for _, obj in ipairs(workspace:GetChildren()) do
-		if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-			local humanoid = obj.Humanoid
-			local targetRoot = obj.HumanoidRootPart
-			if humanoid.Health <= 10 then
-				root.CFrame = targetRoot.CFrame + Vector3.new(0,3,0)
-				print("วาร์ปไปยัง:", obj.Name)
-				return true
-			end
-		end
-	end
-	return false
-end
-
-TeleportButton.MouseButton1Click:Connect(function()
-	local success = teleportToDeadCharacter()
-	if success then
-		TeleportButton.Text = "✅ วาร์ปสำเร็จ!"
-		TeleportButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-	else
-		TeleportButton.Text = "❌ ไม่มีตัวที่ตาย"
-		TeleportButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-	end
-	task.delay(2, function()
-		TeleportButton.Text = "วาร์ปไปผู้เล่น/NPC ที่ตาย"
-		TeleportButton.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-	end)
+player.CharacterAdded:Connect(function(newChar)
+	char = newChar
+	root = newChar:WaitForChild("HumanoidRootPart")
 end)
 
--- ฟังก์ชันฟาร์มวัว
-local function farmCows()
-	for _, cow in pairs(workspace.Plants.Cow:GetChildren()) do
-		if not getgenv().AutoFarmCow then break end
-		if cow:FindFirstChild("Cube") and cow.Cube:FindFirstChild("ProximityPrompt") then
-			local prompt = cow.Cube.ProximityPrompt
-			root.CFrame = cow.Cube.CFrame * CFrame.new(0,0,3)
-			task.wait(to)
-			if not getgenv().AutoFarmCow then break end
-			prompt:InputHoldBegin()
-			task.wait(go)
-			prompt:InputHoldEnd()
-		end
-	end
-end
-
--- ฟังก์ชันฟาร์มมะม่วง
-local function farmMangos()
-	for _, mango in pairs(workspace.Plants.Mango:GetChildren()) do
-		if not getgenv().AutoFarmMango then break end
-		local model = mango:FindFirstChild("Model")
-		if model and model:FindFirstChild("Trunk") then
-			local trunk = model.Trunk
-			local attach = trunk:FindFirstChild("Attachment")
-			if attach and attach:FindFirstChild("ProximityPrompt") then
-				local prompt = attach.ProximityPrompt
-				root.CFrame = trunk.CFrame * CFrame.new(0,0,3)
-				task.wait(to)
-				if not getgenv().AutoFarmMango then break end
-				prompt:InputHoldBegin()
-				task.wait(go)
-				prompt:InputHoldEnd()
-			end
-		end
-	end
-end
-
--- ลูปฟาร์มอัตโนมัติ
+-- ⚡ AutoFarm Loop รวมทุกระบบ
 task.spawn(function()
-	while true do
-		if getgenv().AutoFarmCow then pcall(farmCows) end
-		if getgenv().AutoFarmMango then pcall(farmMangos) end
-		RunService.Heartbeat:Wait()
+	while task.wait(0.1) do
+		if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+			player.CharacterAdded:Wait()
+			root = player.Character:WaitForChild("HumanoidRootPart")
+			continue
+		end
+
+		-- 🐄 วัว
+		if getgenv().AutoCow then
+			for _, cow in pairs(workspace.Plants.Cow:GetChildren()) do
+				local cube = cow:FindFirstChild("Cube")
+				if cube and cube:FindFirstChild("ProximityPrompt") then
+					root.CFrame = CFrame.new(cube.Position + Vector3.new(0,0,-2))
+					cube.ProximityPrompt.HoldDuration = 0
+					pcall(function() fireproximityprompt(cube.ProximityPrompt) end)
+				end
+			end
+		end
+
+		-- 🐔 ไก่
+		if getgenv().AutoChicken then
+			for _, chicken in pairs(workspace.Plants.Chicken:GetChildren()) do
+				local obj = chicken:FindFirstChild("Object_1")
+				if obj and obj:FindFirstChild("ProximityPrompt") then
+					root.CFrame = CFrame.new(obj.Position + Vector3.new(0,0,-2))
+					obj.ProximityPrompt.HoldDuration = 0
+					pcall(function() fireproximityprompt(obj.ProximityPrompt) end)
+				end
+			end
+		end
+
+		-- 🥭 มะม่วง
+		if getgenv().AutoMango then
+			for _, mango in pairs(workspace.Plants.Mango:GetChildren()) do
+				local model = mango:FindFirstChild("Model")
+				if model and model:FindFirstChild("Trunk") then
+					local attach = model.Trunk:FindFirstChild("Attachment")
+					if attach and attach:FindFirstChild("ProximityPrompt") then
+						root.CFrame = CFrame.new(model.Trunk.Position + Vector3.new(0,0,-2))
+						attach.ProximityPrompt.HoldDuration = 0
+						pcall(function() fireproximityprompt(attach.ProximityPrompt) end)
+					end
+				end
+			end
+		end
+
+		-- 🌳 ต้นไม้
+		if getgenv().AutoTree then
+			for _, tree in pairs(workspace.Plants.Tree:GetChildren()) do
+				local trunk = tree:FindFirstChild("Trunk")
+				if trunk and trunk:FindFirstChild("AttachText") then
+					local attach = trunk.AttachText:FindFirstChild("ProximityPrompt")
+					if attach then
+						root.CFrame = CFrame.new(trunk.Position + Vector3.new(0,0,-2))
+						attach.HoldDuration = 0
+						pcall(function() fireproximityprompt(attach) end)
+					end
+				end
+			end
+		end
+
+		-- 🥥 ทุเรียน
+		if getgenv().AutoDurian then
+			for _, durian in pairs(workspace.Plants.Durian:GetChildren()) do
+				local model = durian:FindFirstChild("Model")
+				if model and model:FindFirstChild("Trunk") then
+					local attach = model.Trunk:FindFirstChild("Attachment")
+					if attach and attach:FindFirstChild("ProximityPrompt") then
+						root.CFrame = CFrame.new(model.Trunk.Position + Vector3.new(0,0,-2))
+						attach.ProximityPrompt.HoldDuration = 0
+						pcall(function() fireproximityprompt(attach.ProximityPrompt) end)
+					end
+				end
+			end
+		end
+
+		-- 🍍 สับปะรด
+		if getgenv().AutoPineapple then
+			for _, pineapple in pairs(workspace.Plants.Pineapple:GetChildren()) do
+				local model = pineapple:FindFirstChild("Model")
+				if model then
+					for _, child in pairs(model:GetChildren()) do
+						if child:FindFirstChild("ProximityPrompt") then
+							root.CFrame = CFrame.new(child.Position + Vector3.new(0,0,-2))
+							child.ProximityPrompt.HoldDuration = 0
+							pcall(function() fireproximityprompt(child.ProximityPrompt) end)
+						end
+					end
+				end
+			end
+		end
 	end
 end)
 
--- สร้าง Luna Window และแท็บ
-local window = Luna:CreateWindow({
-	Title = "Chok Hub",
-	SubTitle = "Auto Farm + Medical + Event",
-	Size = UDim2.new(0, 350, 0, 250)
-})
+----------------------------------------------------
+-- 🏥 ระบบหมอ / Medic
+----------------------------------------------------
+local main2 = GUI:CreateTab("หมอ", "briefcase-medical")
+GUI:CreateSection({ parent = main2, text = "ระบบรักษาและวาร์ป (v2)" })
 
--- แท็บฟาร์ม
-local farmTab = window:CreateTab({ Title = "ฟาร์มอัตโนมัติ" })
-farmTab:CreateToggle({
-	Name = "Auto Cow",
-	Default = false,
-	Callback = function(state) getgenv().AutoFarmCow = state end
-})
-farmTab:CreateToggle({
-	Name = "Auto Mango",
-	Default = false,
-	Callback = function(state) getgenv().AutoFarmMango = state end
-})
-
--- แท็บหมอ
-local medicalTab = window:CreateTab({ Title = "หมอ" })
-medicalTab:CreateToggle({
-	Name = "เปิด/ปิด Teleport UI",
-	Default = true,
-	Callback = function(state) ScreenGui.Enabled = state end
-})
-medicalTab:CreateButton({
-	Name = "วาร์ปไปโรงบาล",
-	Callback = function()
-		root.CFrame = CFrame.new(-230.932831, 4.692873, 1498.82788, 1,0,0,0,1,0,0,0,1)
-		print("วาร์ปไปโรงบาลเรียบร้อย")
+-- วาร์ปไปโรงพยาบาล
+GUI:CreateButton({
+	parent = main2,
+	text = "🏥 วาร์ปไปโรงพยาบาล",
+	callback = function()
+		if root then
+			root.CFrame = CFrame.new(-230.932831, 4.692873, 1498.82788)
+		end
 	end
 })
 
--- แท็บอีเวนต์
-local eventTab = window:CreateTab({ Title = "อีเวนต์" })
-eventTab:CreateButton({
-	Name = "วาร์ปไป Halloween Gems ทั้งหมด",
-	Callback = function()
-		for _, gem in pairs(workspace["Halloween Gems"]:GetChildren()) do
-			if gem:FindFirstChild("HumanoidRootPart") then
-				root.CFrame = gem.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
-				task.wait(0.5) -- เว้นระยะก่อนวาร์ปตัวถัดไป
-			elseif gem:IsA("BasePart") then
-				root.CFrame = gem.CFrame + Vector3.new(0,3,0)
-				task.wait(0.5)
+-- วาร์ปไปหาคนเจ็บ
+GUI:CreateButton({
+	parent = main2,
+	text = "🚑 วาร์ปไปหาคนเจ็บ",
+	callback = function()
+		for _, obj in ipairs(workspace:GetChildren()) do
+			local humanoid = obj:FindFirstChildOfClass("Humanoid")
+			local hrp = obj:FindFirstChild("HumanoidRootPart")
+			if humanoid and hrp and humanoid.Health <= 10 then
+				root.CFrame = hrp.CFrame + Vector3.new(0, 3, 0)
+				break
 			end
 		end
-		print("วาร์ปไป Halloween Gems ทั้งหมดเรียบร้อย")
+	end
+})
+
+-- 💉 AutoMedic (รักษาอัตโนมัติ)
+GUI:CreateToggle({
+	parent = main2,
+	text = "💉 AutoMedic (รักษาอัตโนมัติ)",
+	default = false,
+	callback = function(state)
+		getgenv().AutoMedic = state
+		task.spawn(function()
+			while getgenv().AutoMedic do
+				for _, obj in ipairs(workspace:GetChildren()) do
+					local humanoid = obj:FindFirstChildOfClass("Humanoid")
+					local hrp = obj:FindFirstChild("HumanoidRootPart")
+					if humanoid and hrp and humanoid.Health <= 10 then
+						local prompt = hrp:FindFirstChild("Medic_Prompt")
+						if prompt and prompt:IsA("ProximityPrompt") then
+							prompt.HoldDuration = 0
+							pcall(function() fireproximityprompt(prompt) end)
+						end
+					end
+				end
+				task.wait(0.1)
+			end
+		end)
+	end
+})
+
+-- 🚑 วาร์ปอัตโนมัติไปรักษา
+GUI:CreateToggle({
+	parent = main2,
+	text = "🚑 วาร์ปอัตโนมัติไปรักษา",
+	default = false,
+	callback = function(state)
+		getgenv().AutoWarpMedic = state
+		task.spawn(function()
+			while getgenv().AutoWarpMedic do
+				for _, obj in ipairs(workspace:GetChildren()) do
+					local humanoid = obj:FindFirstChildOfClass("Humanoid")
+					local hrp = obj:FindFirstChild("HumanoidRootPart")
+					if humanoid and hrp and humanoid.Health <= 10 then
+						root.CFrame = hrp.CFrame + Vector3.new(0, 3, 0)
+						break
+					end
+				end
+				task.wait()
+			end
+		end)
 	end
 })
