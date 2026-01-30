@@ -1,0 +1,1470 @@
+<!doctype html>
+<html lang="th" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World War Strategy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=Source+Sans+Pro:wght@400;600&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    
+    * {
+      font-family: 'Source Sans Pro', sans-serif;
+    }
+    
+    .font-military {
+      font-family: 'Oswald', sans-serif;
+    }
+    
+    .map-container {
+      background: linear-gradient(145deg, #1a1f2e 0%, #0d1117 100%);
+    }
+    
+    .state-polygon {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .state-polygon:hover {
+      filter: brightness(1.3);
+      transform: scale(1.02);
+    }
+    
+    .glow-red {
+      box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+    }
+    
+    .glow-blue {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+    
+    .glow-green {
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+    }
+    
+    .panel-bg {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+      border: 1px solid rgba(71, 85, 105, 0.5);
+    }
+    
+    .progress-bar {
+      background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+    }
+    
+    .supply-line {
+      stroke-dasharray: 8 4;
+      animation: dash 1s linear infinite;
+    }
+    
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -12;
+      }
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+    
+    .pulse-animation {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    .tab-active {
+      background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+      border-bottom: 3px solid #fbbf24;
+    }
+    
+    .resource-icon {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .division-card {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid #475569;
+      transition: all 0.2s ease;
+    }
+    
+    .division-card:hover {
+      border-color: #dc2626;
+      transform: translateY(-2px);
+    }
+    
+    .focus-node {
+      transition: all 0.3s ease;
+    }
+    
+    .focus-node:hover {
+      transform: scale(1.05);
+    }
+    
+    .focus-completed {
+      background: linear-gradient(135deg, #166534 0%, #14532d 100%);
+      border-color: #22c55e;
+    }
+    
+    .focus-available {
+      background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+      border-color: #3b82f6;
+    }
+    
+    .focus-locked {
+      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+      border-color: #4b5563;
+      opacity: 0.6;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+ </head>
+ <body class="h-full bg-slate-900 text-gray-100 overflow-hidden">
+  <div id="app" class="h-full flex flex-col"><!-- Top Bar -->
+   <header class="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-4">
+     <div class="flex items-center gap-2">
+      <svg class="w-8 h-8 text-red-500" viewbox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.5L19 8l-7 3.5L5 8l7-3.5zM4 9.5l7 3.5v7L4 16.5v-7zm16 0v7l-7 3.5v-7l7-3.5z" />
+      </svg>
+      <h1 id="nation-title" class="font-military text-xl font-bold text-white tracking-wider">REPUBLIC OF AURORA</h1>
+     </div>
+     <div class="h-6 w-px bg-slate-600"></div><span id="leader-display" class="text-sm text-gray-400">ผู้นำ: <span class="text-amber-400">Marshal Viktor</span></span>
+    </div><!-- Resources Bar -->
+    <div class="flex items-center gap-6">
+     <div class="flex items-center gap-2" title="Manpower">
+      <svg class="w-5 h-5 text-green-400" viewbox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+      </svg><span id="manpower-display" class="font-military text-sm">1,250,000</span>
+     </div>
+     <div class="flex items-center gap-2" title="Steel">
+      <svg class="w-5 h-5 text-gray-400" viewbox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-4H6v-2h4V7h2v4h4v2h-4v4z" />
+      </svg><span id="steel-display" class="font-military text-sm text-gray-300">+24</span>
+     </div>
+     <div class="flex items-center gap-2" title="Oil">
+      <svg class="w-5 h-5 text-amber-500" viewbox="0 0 24 24" fill="currentColor"><path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8z" />
+      </svg><span id="oil-display" class="font-military text-sm text-amber-300">+12</span>
+     </div>
+     <div class="flex items-center gap-2" title="Aluminum">
+      <svg class="w-5 h-5 text-blue-400" viewbox="0 0 24 24" fill="currentColor"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z" />
+      </svg><span id="aluminum-display" class="font-military text-sm text-blue-300">+8</span>
+     </div>
+     <div class="h-6 w-px bg-slate-600"></div>
+     <div class="flex items-center gap-2" title="Political Power">
+      <svg class="w-5 h-5 text-purple-400" viewbox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z" />
+      </svg><span class="font-military text-sm text-purple-300">+1.2/day</span>
+     </div>
+    </div><!-- Date & Speed -->
+    <div class="flex items-center gap-4">
+     <div class="text-right">
+      <div id="game-date" class="font-military text-lg text-amber-400">
+       1 มกราคม 1936
+      </div>
+      <div class="text-xs text-gray-500">
+       เวลาเกม
+      </div>
+     </div>
+     <div class="flex items-center gap-1"><button id="pause-btn" class="p-2 bg-slate-700 hover:bg-red-600 rounded transition-colors">
+       <svg class="w-4 h-4" viewbox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+       </svg></button> <button id="speed1-btn" class="p-2 bg-slate-700 hover:bg-slate-600 rounded transition-colors"> <span class="text-xs font-bold">1x</span> </button> <button id="speed2-btn" class="p-2 bg-slate-700 hover:bg-slate-600 rounded transition-colors"> <span class="text-xs font-bold">2x</span> </button> <button id="speed3-btn" class="p-2 bg-red-600 rounded transition-colors"> <span class="text-xs font-bold">5x</span> </button>
+     </div>
+    </div>
+   </header><!-- Main Content -->
+   <div class="flex-1 flex overflow-hidden"><!-- Left Sidebar - Navigation -->
+    <nav class="w-16 bg-slate-800 border-r border-slate-700 flex flex-col items-center py-4 gap-2 flex-shrink-0"><button class="nav-btn p-3 rounded-lg bg-red-600 text-white" data-tab="map" title="แผนที่">
+      <svg class="w-6 h-6" viewbox="0 0 24 24" fill="currentColor"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" />
+      </svg></button> <button class="nav-btn p-3 rounded-lg hover:bg-slate-700 text-gray-400" data-tab="economy" title="เศรษฐกิจ">
+      <svg class="w-6 h-6" viewbox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+      </svg></button> <button class="nav-btn p-3 rounded-lg hover:bg-slate-700 text-gray-400" data-tab="focus" title="Focus Tree">
+      <svg class="w-6 h-6" viewbox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+      </svg></button> <button class="nav-btn p-3 rounded-lg hover:bg-slate-700 text-gray-400" data-tab="military" title="กองทัพ">
+      <svg class="w-6 h-6" viewbox="0 0 24 24" fill="currentColor"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1.06 13.54L7.4 12l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41-5.64 5.66z" />
+      </svg></button> <button class="nav-btn p-3 rounded-lg hover:bg-slate-700 text-gray-400" data-tab="politics" title="นโยบาย">
+      <svg class="w-6 h-6" viewbox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
+      </svg></button>
+     <div class="flex-1"></div><button class="nav-btn p-3 rounded-lg hover:bg-slate-700 text-gray-400" title="บันทึก">
+      <svg class="w-6 h-6" viewbox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
+      </svg></button>
+    </nav><!-- Main Panel -->
+    <main class="flex-1 flex overflow-hidden"><!-- Map View -->
+     <div id="map-panel" class="flex-1 flex"><!-- Map Area -->
+      <div class="flex-1 map-container relative overflow-hidden">
+       <svg id="world-map" class="w-full h-full" viewbox="0 0 1000 600" preserveaspectratio="xMidYMid meet"><!-- Background Grid --> <defs>
+         <pattern id="grid" width="50" height="50" patternunits="userSpaceOnUse">
+          <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#1e293b" stroke-width="0.5" />
+         </pattern>
+         <lineargradient id="oceanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#0c1929" />
+          <stop offset="100%" style="stop-color:#0f172a" />
+         </lineargradient>
+         <filter id="glow">
+          <fegaussianblur stddeviation="2" result="coloredBlur" />
+          <femerge>
+           <femergenode in="coloredBlur" />
+           <femergenode in="SourceGraphic" />
+          </femerge>
+         </filter>
+        </defs> <rect width="100%" height="100%" fill="url(#oceanGrad)" /> <rect width="100%" height="100%" fill="url(#grid)" /> <!-- States (Simplified Europe-like map) --> <g id="states-layer"><!-- Northern Region -->
+         <path class="state-polygon" data-state="north" d="M200,80 L350,60 L400,100 L380,180 L300,200 L220,160 Z" fill="#2d5a3d" stroke="#4ade80" stroke-width="2" />
+         <text x="290" y="130" fill="#fff" font-size="12" text-anchor="middle" class="font-military">
+          NORDLAND
+         </text> <!-- Western Region (Player) -->
+         <path class="state-polygon" data-state="west" d="M100,180 L220,160 L300,200 L320,300 L280,380 L180,350 L100,280 Z" fill="#1e40af" stroke="#3b82f6" stroke-width="3" filter="url(#glow)" />
+         <text x="200" y="270" fill="#fff" font-size="14" text-anchor="middle" class="font-military font-bold">
+          AURORA
+         </text>
+         <circle cx="190" cy="290" r="8" fill="#fbbf24" class="pulse-animation" /> <!-- Central Region -->
+         <path class="state-polygon" data-state="central" d="M300,200 L380,180 L480,200 L500,300 L450,380 L320,300 Z" fill="#4a5568" stroke="#718096" stroke-width="2" />
+         <text x="390" y="280" fill="#fff" font-size="12" text-anchor="middle" class="font-military">
+          ZENTRAL
+         </text> <!-- Eastern Region -->
+         <path class="state-polygon" data-state="east" d="M480,200 L600,150 L700,200 L720,350 L600,400 L500,300 Z" fill="#7f1d1d" stroke="#dc2626" stroke-width="2" />
+         <text x="590" y="280" fill="#fff" font-size="12" text-anchor="middle" class="font-military">
+          OSTREICH
+         </text> <!-- Southern Region -->
+         <path class="state-polygon" data-state="south" d="M280,380 L450,380 L500,480 L400,550 L250,520 L200,450 Z" fill="#854d0e" stroke="#d97706" stroke-width="2" />
+         <text x="350" y="470" fill="#fff" font-size="12" text-anchor="middle" class="font-military">
+          SUDORIA
+         </text> <!-- Far East -->
+         <path class="state-polygon" data-state="fareast" d="M700,200 L850,180 L920,280 L880,400 L720,350 Z" fill="#581c87" stroke="#a855f7" stroke-width="2" />
+         <text x="800" y="290" fill="#fff" font-size="12" text-anchor="middle" class="font-military">
+          ORIENT
+         </text>
+        </g> <!-- Supply Lines --> <g id="supply-layer">
+         <path class="supply-line" d="M190,290 Q250,250 300,260" fill="none" stroke="#22c55e" stroke-width="3" />
+         <path class="supply-line" d="M190,290 Q220,320 260,350" fill="none" stroke="#22c55e" stroke-width="2" stroke-opacity="0.6" />
+        </g> <!-- Division Markers --> <g id="divisions-layer">
+         <g transform="translate(160, 230)" class="cursor-pointer">
+          <rect x="0" y="0" width="40" height="20" fill="#1e3a8a" stroke="#60a5fa" stroke-width="1" rx="2" />
+          <text x="20" y="14" fill="#fff" font-size="10" text-anchor="middle" class="font-military">
+           INF
+          </text>
+          <circle cx="35" cy="5" r="6" fill="#22c55e" />
+          <text x="35" y="8" fill="#fff" font-size="8" text-anchor="middle">
+           12
+          </text>
+         </g>
+         <g transform="translate(220, 300)" class="cursor-pointer">
+          <rect x="0" y="0" width="40" height="20" fill="#1e3a8a" stroke="#fbbf24" stroke-width="1" rx="2" />
+          <text x="20" y="14" fill="#fff" font-size="10" text-anchor="middle" class="font-military">
+           ARM
+          </text>
+          <circle cx="35" cy="5" r="6" fill="#22c55e" />
+          <text x="35" y="8" fill="#fff" font-size="8" text-anchor="middle">
+           4
+          </text>
+         </g>
+        </g> <!-- Battle Indicator --> <g id="battle-indicator" transform="translate(310, 240)" class="cursor-pointer">
+         <circle r="15" fill="#dc2626" class="pulse-animation" />
+         <text y="4" fill="#fff" font-size="12" text-anchor="middle">
+          ⚔
+         </text>
+        </g>
+       </svg><!-- Map Controls -->
+       <div class="absolute bottom-4 right-4 flex flex-col gap-2"><button class="p-2 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600">
+         <svg class="w-5 h-5" viewbox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+         </svg></button> <button class="p-2 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600">
+         <svg class="w-5 h-5" viewbox="0 0 24 24" fill="currentColor"><path d="M19 13H5v-2h14v2z" />
+         </svg></button>
+       </div><!-- Map Mode Selector -->
+       <div class="absolute top-4 left-4 flex gap-2"><button class="px-3 py-1 bg-red-600 text-white text-sm rounded font-military">POLITICAL</button> <button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-gray-300 text-sm rounded font-military">SUPPLY</button> <button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-gray-300 text-sm rounded font-military">AIR</button> <button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-gray-300 text-sm rounded font-military">NAVAL</button>
+       </div>
+      </div><!-- State Info Panel -->
+      <div id="state-info" class="w-80 panel-bg p-4 overflow-y-auto scrollbar-thin flex-shrink-0">
+       <div class="flex items-center justify-between mb-4">
+        <h2 class="font-military text-lg text-amber-400">AURORA - CAPITAL</h2><span class="px-2 py-1 bg-blue-900 text-blue-300 text-xs rounded">CORE STATE</span>
+       </div><!-- State Stats -->
+       <div class="space-y-3 mb-6">
+        <div class="flex items-center justify-between"><span class="text-gray-400">ประชากร</span> <span class="font-military text-green-400">8,500,000</span>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-gray-400">โครงสร้างพื้นฐาน</span>
+         <div class="flex items-center gap-2">
+          <div class="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+           <div class="h-full bg-amber-500" style="width: 70%"></div>
+          </div><span class="text-sm">7/10</span>
+         </div>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-gray-400">Supply Hub</span> <span class="text-green-400">✓ Active</span>
+        </div>
+       </div><!-- Factories -->
+       <h3 class="font-military text-sm text-gray-300 mb-2 border-b border-slate-600 pb-1">โรงงาน</h3>
+       <div class="grid grid-cols-3 gap-2 mb-4">
+        <div class="bg-slate-800 p-2 rounded text-center">
+         <div class="text-2xl font-military text-blue-400" id="civilian-factories">
+          15
+         </div>
+         <div class="text-xs text-gray-500">
+          Civilian
+         </div>
+        </div>
+        <div class="bg-slate-800 p-2 rounded text-center">
+         <div class="text-2xl font-military text-red-400" id="military-factories">
+          8
+         </div>
+         <div class="text-xs text-gray-500">
+          Military
+         </div>
+        </div>
+        <div class="bg-slate-800 p-2 rounded text-center">
+         <div class="text-2xl font-military text-cyan-400">
+          3
+         </div>
+         <div class="text-xs text-gray-500">
+          Dockyard
+         </div>
+        </div>
+       </div><!-- Resources -->
+       <h3 class="font-military text-sm text-gray-300 mb-2 border-b border-slate-600 pb-1">ทรัพยากร</h3>
+       <div class="space-y-2 mb-4">
+        <div class="flex items-center justify-between bg-slate-800 p-2 rounded">
+         <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-gray-500 rounded"></div><span class="text-sm">Steel</span>
+         </div><span class="font-military text-gray-300">+24</span>
+        </div>
+        <div class="flex items-center justify-between bg-slate-800 p-2 rounded">
+         <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-amber-600 rounded"></div><span class="text-sm">Oil</span>
+         </div><span class="font-military text-amber-300">+12</span>
+        </div>
+        <div class="flex items-center justify-between bg-slate-800 p-2 rounded">
+         <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-blue-400 rounded"></div><span class="text-sm">Aluminum</span>
+         </div><span class="font-military text-blue-300">+8</span>
+        </div>
+       </div><!-- Actions -->
+       <div class="space-y-2"><button id="build-factory-btn" class="w-full py-2 bg-blue-700 hover:bg-blue-600 rounded font-military text-sm transition-colors"> 🏭 สร้างโรงงาน (+70 วัน) </button> <button id="upgrade-infra-btn" class="w-full py-2 bg-amber-700 hover:bg-amber-600 rounded font-military text-sm transition-colors"> 🛤 พัฒนาโครงสร้างพื้นฐาน </button>
+       </div>
+      </div>
+     </div><!-- Economy Panel -->
+     <div id="economy-panel" class="flex-1 hidden">
+      <div class="h-full overflow-y-auto scrollbar-thin p-6">
+       <h2 class="font-military text-2xl text-amber-400 mb-6">ภาพรวมเศรษฐกิจ</h2><!-- Factory Summary -->
+       <div class="grid grid-cols-4 gap-4 mb-8">
+        <div class="panel-bg p-4 rounded-lg">
+         <div class="text-3xl font-military text-blue-400 mb-1" id="total-civilian">
+          45
+         </div>
+         <div class="text-sm text-gray-400">
+          โรงงาน Civilian
+         </div>
+         <div class="text-xs text-green-400 mt-2">
+          ▲ +3 กำลังสร้าง
+         </div>
+        </div>
+        <div class="panel-bg p-4 rounded-lg">
+         <div class="text-3xl font-military text-red-400 mb-1" id="total-military">
+          28
+         </div>
+         <div class="text-sm text-gray-400">
+          โรงงาน Military
+         </div>
+         <div class="text-xs text-green-400 mt-2">
+          ▲ +2 กำลังสร้าง
+         </div>
+        </div>
+        <div class="panel-bg p-4 rounded-lg">
+         <div class="text-3xl font-military text-cyan-400 mb-1">
+          12
+         </div>
+         <div class="text-sm text-gray-400">
+          Dockyard
+         </div>
+         <div class="text-xs text-gray-500 mt-2">
+          — ไม่มีการก่อสร้าง
+         </div>
+        </div>
+        <div class="panel-bg p-4 rounded-lg">
+         <div class="text-3xl font-military text-purple-400 mb-1">
+          85
+         </div>
+         <div class="text-sm text-gray-400">
+          รวมทั้งหมด
+         </div>
+         <div class="text-xs text-amber-400 mt-2">
+          อันดับ 3 ของโลก
+         </div>
+        </div>
+       </div><!-- Production Queue -->
+       <h3 class="font-military text-lg text-gray-300 mb-4 flex items-center gap-2"><span>🔧</span> คิวการผลิต</h3>
+       <div class="panel-bg rounded-lg overflow-hidden mb-8">
+        <table class="w-full">
+         <thead class="bg-slate-700">
+          <tr>
+           <th class="text-left p-3 font-military text-sm text-gray-300">รายการ</th>
+           <th class="text-center p-3 font-military text-sm text-gray-300">โรงงาน</th>
+           <th class="text-center p-3 font-military text-sm text-gray-300">ความคืบหน้า</th>
+           <th class="text-center p-3 font-military text-sm text-gray-300">ผลิตแล้ว</th>
+          </tr>
+         </thead>
+         <tbody id="production-queue">
+          <tr class="border-t border-slate-700 hover:bg-slate-800">
+           <td class="p-3">
+            <div class="flex items-center gap-2"><span class="text-xl">🔫</span> <span>Infantry Equipment I</span>
+            </div></td>
+           <td class="text-center p-3 font-military text-red-400">12</td>
+           <td class="p-3">
+            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+             <div class="h-full progress-bar" style="width: 67%"></div>
+            </div></td>
+           <td class="text-center p-3 font-military text-green-400">2,400</td>
+          </tr>
+          <tr class="border-t border-slate-700 hover:bg-slate-800">
+           <td class="p-3">
+            <div class="flex items-center gap-2"><span class="text-xl">🛡</span> <span>Support Equipment</span>
+            </div></td>
+           <td class="text-center p-3 font-military text-red-400">5</td>
+           <td class="p-3">
+            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+             <div class="h-full progress-bar" style="width: 45%"></div>
+            </div></td>
+           <td class="text-center p-3 font-military text-green-400">180</td>
+          </tr>
+          <tr class="border-t border-slate-700 hover:bg-slate-800">
+           <td class="p-3">
+            <div class="flex items-center gap-2"><span class="text-xl">🚗</span> <span>Motorized Infantry</span>
+            </div></td>
+           <td class="text-center p-3 font-military text-red-400">8</td>
+           <td class="p-3">
+            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+             <div class="h-full progress-bar" style="width: 23%"></div>
+            </div></td>
+           <td class="text-center p-3 font-military text-green-400">320</td>
+          </tr>
+          <tr class="border-t border-slate-700 hover:bg-slate-800">
+           <td class="p-3">
+            <div class="flex items-center gap-2"><span class="text-xl">🛩</span> <span>Fighter I</span>
+            </div></td>
+           <td class="text-center p-3 font-military text-red-400">3</td>
+           <td class="p-3">
+            <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+             <div class="h-full progress-bar" style="width: 89%"></div>
+            </div></td>
+           <td class="text-center p-3 font-military text-green-400">45</td>
+          </tr>
+         </tbody>
+        </table>
+       </div><!-- Resource Balance -->
+       <h3 class="font-military text-lg text-gray-300 mb-4 flex items-center gap-2"><span>📊</span> สมดุลทรัพยากร</h3>
+       <div class="grid grid-cols-3 gap-4">
+        <div class="panel-bg p-4 rounded-lg">
+         <div class="flex items-center justify-between mb-2"><span class="text-gray-400">Steel</span> <span class="font-military text-green-400">+24</span>
+         </div>
+         <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-gray-500" style="width: 80%"></div>
+         </div>
+         <div class="flex justify-between text-xs mt-1"><span class="text-gray-500">ผลิต: 48</span> <span class="text-gray-500">ใช้: 24</span>
+         </div>
+        </div>
+        <div class="panel-bg p-4 rounded-lg">
+         <div class="flex items-center justify-between mb-2"><span class="text-gray-400">Oil</span> <span class="font-military text-amber-400">+12</span>
+         </div>
+         <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-amber-600" style="width: 60%"></div>
+         </div>
+         <div class="flex justify-between text-xs mt-1"><span class="text-gray-500">ผลิต: 32</span> <span class="text-gray-500">ใช้: 20</span>
+         </div>
+        </div>
+        <div class="panel-bg p-4 rounded-lg">
+         <div class="flex items-center justify-between mb-2"><span class="text-gray-400">Aluminum</span> <span class="font-military text-red-400">-4</span>
+         </div>
+         <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-blue-500" style="width: 40%"></div>
+         </div>
+         <div class="flex justify-between text-xs mt-1"><span class="text-gray-500">ผลิต: 16</span> <span class="text-gray-500">ใช้: 20</span>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div><!-- Focus Tree Panel -->
+     <div id="focus-panel" class="flex-1 hidden">
+      <div class="h-full overflow-auto scrollbar-thin p-6">
+       <div class="flex items-center justify-between mb-6">
+        <h2 class="font-military text-2xl text-amber-400">National Focus Tree</h2>
+        <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded"><span class="text-sm text-gray-400">กำลังดำเนินการ:</span> <span class="font-military text-amber-400">Industrial Effort</span> <span class="text-sm text-gray-500">(32/70 วัน)</span>
+        </div>
+       </div><!-- Focus Tree -->
+       <div class="relative min-h-96"><!-- Focus Connections -->
+        <svg class="absolute inset-0 w-full h-full pointer-events-none"><line x1="150" y1="80" x2="150" y2="150" stroke="#475569" stroke-width="2" /> <line x1="150" y1="210" x2="150" y2="280" stroke="#475569" stroke-width="2" /> <line x1="350" y1="80" x2="350" y2="150" stroke="#475569" stroke-width="2" /> <line x1="350" y1="210" x2="350" y2="280" stroke="#475569" stroke-width="2" /> <line x1="550" y1="80" x2="550" y2="150" stroke="#475569" stroke-width="2" />
+        </svg><!-- Focus Row 1 -->
+        <div class="flex justify-center gap-8 mb-8"><!-- Industrial Path -->
+         <div class="focus-node focus-completed w-48 p-3 rounded-lg border-2 cursor-pointer" data-focus="industry1">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">🏭</span> <span class="font-military text-sm">Industrial Effort</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +3 Civilian Factories
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-green-400">✓ สำเร็จ</span> <span class="text-xs text-gray-500">70 วัน</span>
+          </div>
+         </div><!-- Military Path -->
+         <div class="focus-node focus-available w-48 p-3 rounded-lg border-2 cursor-pointer" data-focus="military1">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">⚔️</span> <span class="font-military text-sm">Army Reforms</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +5% Division Organization
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-blue-400">พร้อมเริ่ม</span> <span class="text-xs text-gray-500">70 วัน</span>
+          </div>
+         </div><!-- Political Path -->
+         <div class="focus-node focus-locked w-48 p-3 rounded-lg border-2 cursor-pointer" data-focus="political1">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">🏛</span> <span class="font-military text-sm">Political Unity</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +120 Political Power
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-gray-500">🔒 ล็อก</span> <span class="text-xs text-gray-500">70 วัน</span>
+          </div>
+         </div>
+        </div><!-- Focus Row 2 -->
+        <div class="flex justify-center gap-8 mb-8">
+         <div class="focus-node focus-available w-48 p-3 rounded-lg border-2 cursor-pointer animate-pulse" data-focus="industry2">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">🔧</span> <span class="font-military text-sm">Production Bonus</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +10% Factory Output
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-amber-400">◐ กำลังดำเนินการ</span> <span class="text-xs text-gray-500">32/70</span>
+          </div>
+          <div class="w-full h-1 bg-slate-700 rounded-full mt-2 overflow-hidden">
+           <div class="h-full bg-amber-500" style="width: 46%"></div>
+          </div>
+         </div>
+         <div class="focus-node focus-locked w-48 p-3 rounded-lg border-2 cursor-pointer" data-focus="military2">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">🎖</span> <span class="font-military text-sm">Officer Corps</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +1 Army Experience/day
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-gray-500">🔒 ต้องการ Army Reforms</span> <span class="text-xs text-gray-500">70 วัน</span>
+          </div>
+         </div>
+         <div class="focus-node focus-locked w-48 p-3 rounded-lg border-2 cursor-pointer" data-focus="political2">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">📜</span> <span class="font-military text-sm">Propaganda</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +15% War Support
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-gray-500">🔒 ล็อก</span> <span class="text-xs text-gray-500">35 วัน</span>
+          </div>
+         </div>
+        </div><!-- Focus Row 3 -->
+        <div class="flex justify-center gap-8">
+         <div class="focus-node focus-locked w-48 p-3 rounded-lg border-2 cursor-pointer" data-focus="industry3">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">⚡</span> <span class="font-military text-sm">Resource Rights</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +20 Steel, +10 Oil
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-gray-500">🔒 ต้องการ Production Bonus</span> <span class="text-xs text-gray-500">70 วัน</span>
+          </div>
+         </div>
+         <div class="focus-node focus-locked w-48 p-3 rounded-lg border-2 cursor-pointer" data-focus="military3">
+          <div class="flex items-center gap-2 mb-2"><span class="text-2xl">🛡</span> <span class="font-military text-sm">Fortress Nation</span>
+          </div>
+          <div class="text-xs text-gray-400 mb-2">
+           +25% Defense on Core
+          </div>
+          <div class="flex items-center justify-between"><span class="text-xs text-gray-500">🔒 ล็อก</span> <span class="text-xs text-gray-500">70 วัน</span>
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div><!-- Military Panel -->
+     <div id="military-panel" class="flex-1 hidden">
+      <div class="h-full flex"><!-- Division List -->
+       <div class="w-80 panel-bg p-4 overflow-y-auto scrollbar-thin">
+        <h2 class="font-military text-lg text-amber-400 mb-4">Army Groups</h2>
+        <div class="space-y-3"><!-- Army Group 1 -->
+         <div class="bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-700 transition-colors">
+          <div class="flex items-center justify-between mb-2"><span class="font-military text-white">1st Army Group</span> <span class="text-xs bg-green-900 text-green-400 px-2 py-0.5 rounded">READY</span>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-gray-400"><span>🎖 Gen. Werner</span> <span>👥 12 Divisions</span>
+          </div>
+          <div class="mt-2 flex gap-1"><span class="px-2 py-0.5 bg-slate-700 rounded text-xs">INF ×8</span> <span class="px-2 py-0.5 bg-slate-700 rounded text-xs">MOT ×2</span> <span class="px-2 py-0.5 bg-slate-700 rounded text-xs">ARM ×2</span>
+          </div>
+         </div><!-- Army Group 2 -->
+         <div class="bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-700 transition-colors border-2 border-amber-600">
+          <div class="flex items-center justify-between mb-2"><span class="font-military text-white">2nd Panzer Army</span> <span class="text-xs bg-amber-900 text-amber-400 px-2 py-0.5 rounded">IN COMBAT</span>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-gray-400"><span>🎖 Gen. Klaus</span> <span>👥 8 Divisions</span>
+          </div>
+          <div class="mt-2 flex gap-1"><span class="px-2 py-0.5 bg-slate-700 rounded text-xs">INF ×2</span> <span class="px-2 py-0.5 bg-slate-700 rounded text-xs">ARM ×4</span> <span class="px-2 py-0.5 bg-slate-700 rounded text-xs">MARM ×2</span>
+          </div>
+         </div><!-- Reserve -->
+         <div class="bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-700 transition-colors opacity-60">
+          <div class="flex items-center justify-between mb-2"><span class="font-military text-white">Strategic Reserve</span> <span class="text-xs bg-slate-700 text-gray-400 px-2 py-0.5 rounded">TRAINING</span>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-gray-400"><span>🎖 —</span> <span>👥 4 Divisions</span>
+          </div>
+          <div class="mt-2">
+           <div class="w-full h-1 bg-slate-700 rounded-full overflow-hidden">
+            <div class="h-full bg-blue-500" style="width: 65%"></div>
+           </div><span class="text-xs text-gray-500">Training: 65%</span>
+          </div>
+         </div>
+        </div><button id="create-division-btn" class="w-full mt-4 py-2 bg-blue-700 hover:bg-blue-600 rounded font-military text-sm transition-colors"> + สร้างกองพล </button>
+       </div><!-- Division Designer -->
+       <div class="flex-1 p-6 overflow-y-auto scrollbar-thin">
+        <h2 class="font-military text-2xl text-amber-400 mb-6">Division Designer</h2><!-- Template Info -->
+        <div class="panel-bg rounded-lg p-4 mb-6">
+         <div class="flex items-center justify-between mb-4"><input type="text" value="Infantry Division (1936)" class="bg-transparent font-military text-xl text-white border-b border-slate-600 focus:border-amber-500 outline-none">
+          <div class="flex gap-2"><button class="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-sm font-military transition-colors">บันทึก</button> <button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-sm font-military transition-colors">ลบ</button>
+          </div>
+         </div><!-- Stats Grid -->
+         <div class="grid grid-cols-4 gap-4">
+          <div class="text-center">
+           <div class="text-2xl font-military text-red-400">
+            24
+           </div>
+           <div class="text-xs text-gray-500">
+            Soft Attack
+           </div>
+          </div>
+          <div class="text-center">
+           <div class="text-2xl font-military text-orange-400">
+            4
+           </div>
+           <div class="text-xs text-gray-500">
+            Hard Attack
+           </div>
+          </div>
+          <div class="text-center">
+           <div class="text-2xl font-military text-blue-400">
+            48
+           </div>
+           <div class="text-xs text-gray-500">
+            Defense
+           </div>
+          </div>
+          <div class="text-center">
+           <div class="text-2xl font-military text-green-400">
+            60
+           </div>
+           <div class="text-xs text-gray-500">
+            Organization
+           </div>
+          </div>
+         </div>
+        </div><!-- Battalion Grid -->
+        <div class="grid grid-cols-2 gap-6"><!-- Combat Battalions -->
+         <div>
+          <h3 class="font-military text-sm text-gray-400 mb-3">Combat Battalions</h3>
+          <div class="grid grid-cols-5 gap-2 panel-bg p-4 rounded-lg">
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🚶</span>
+            <div class="text-xs mt-1">
+             INF
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🚶</span>
+            <div class="text-xs mt-1">
+             INF
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🚶</span>
+            <div class="text-xs mt-1">
+             INF
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🚶</span>
+            <div class="text-xs mt-1">
+             INF
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🚶</span>
+            <div class="text-xs mt-1">
+             INF
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🚶</span>
+            <div class="text-xs mt-1">
+             INF
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">💣</span>
+            <div class="text-xs mt-1">
+             ART
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">💣</span>
+            <div class="text-xs mt-1">
+             ART
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center border-dashed border-slate-600 opacity-50"><span class="text-lg">+</span>
+           </div>
+           <div class="division-card p-2 rounded text-center border-dashed border-slate-600 opacity-50"><span class="text-lg">+</span>
+           </div>
+          </div>
+         </div><!-- Support Companies -->
+         <div>
+          <h3 class="font-military text-sm text-gray-400 mb-3">Support Companies</h3>
+          <div class="grid grid-cols-5 gap-2 panel-bg p-4 rounded-lg">
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🔧</span>
+            <div class="text-xs mt-1">
+             ENG
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">📡</span>
+            <div class="text-xs mt-1">
+             RECON
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center"><span class="text-lg">🚑</span>
+            <div class="text-xs mt-1">
+             MED
+            </div>
+           </div>
+           <div class="division-card p-2 rounded text-center border-dashed border-slate-600 opacity-50"><span class="text-lg">+</span>
+           </div>
+           <div class="division-card p-2 rounded text-center border-dashed border-slate-600 opacity-50"><span class="text-lg">+</span>
+           </div>
+          </div>
+         </div>
+        </div><!-- Available Units -->
+        <h3 class="font-military text-sm text-gray-400 mt-6 mb-3">Available Units</h3>
+        <div class="flex flex-wrap gap-2"><button class="division-card px-3 py-2 rounded flex items-center gap-2"> <span>🚶</span> <span class="text-sm">Infantry</span> </button> <button class="division-card px-3 py-2 rounded flex items-center gap-2"> <span>🚗</span> <span class="text-sm">Motorized</span> </button> <button class="division-card px-3 py-2 rounded flex items-center gap-2"> <span>🛡</span> <span class="text-sm">Tank</span> </button> <button class="division-card px-3 py-2 rounded flex items-center gap-2"> <span>💣</span> <span class="text-sm">Artillery</span> </button> <button class="division-card px-3 py-2 rounded flex items-center gap-2"> <span>🎯</span> <span class="text-sm">Anti-Tank</span> </button> <button class="division-card px-3 py-2 rounded flex items-center gap-2"> <span>☁️</span> <span class="text-sm">Anti-Air</span> </button>
+        </div>
+       </div>
+      </div>
+     </div><!-- Politics Panel -->
+     <div id="politics-panel" class="flex-1 hidden">
+      <div class="h-full overflow-y-auto scrollbar-thin p-6">
+       <h2 class="font-military text-2xl text-amber-400 mb-6">นโยบายและกฎหมาย</h2>
+       <div class="grid grid-cols-2 gap-6"><!-- Conscription Law -->
+        <div class="panel-bg rounded-lg p-4">
+         <h3 class="font-military text-lg text-white mb-4 flex items-center gap-2"><span>👥</span> กฎหมายเกณฑ์ทหาร</h3>
+         <div class="space-y-2" id="conscription-laws"><label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors"> <input type="radio" name="conscription" value="volunteer" class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Volunteer Only
+            </div>
+            <div class="text-xs text-gray-500">
+             1.5% Manpower • ไม่มีผลกระทบเศรษฐกิจ
+            </div>
+           </div><span class="text-xs text-green-400">Peaceful</span> </label> <label class="flex items-center p-3 bg-blue-900 rounded cursor-pointer border border-blue-600"> <input type="radio" name="conscription" value="limited" checked class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Limited Conscription
+            </div>
+            <div class="text-xs text-gray-500">
+             2.5% Manpower • -5% Factory Output
+            </div>
+           </div><span class="text-xs text-amber-400">Active</span> </label> <label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors"> <input type="radio" name="conscription" value="extensive" class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Extensive Conscription
+            </div>
+            <div class="text-xs text-gray-500">
+             5% Manpower • -10% Factory Output
+            </div>
+           </div><span class="text-xs text-orange-400">Wartime</span> </label> <label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors opacity-60"> <input type="radio" name="conscription" value="service" disabled class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Service by Requirement
+            </div>
+            <div class="text-xs text-gray-500">
+             10% Manpower • -20% Factory Output
+            </div>
+           </div><span class="text-xs text-red-400">🔒 At War</span> </label>
+         </div>
+        </div><!-- Economy Law -->
+        <div class="panel-bg rounded-lg p-4">
+         <h3 class="font-military text-lg text-white mb-4 flex items-center gap-2"><span>🏭</span> นโยบายเศรษฐกิจ</h3>
+         <div class="space-y-2" id="economy-laws"><label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors"> <input type="radio" name="economy" value="civilian" class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Civilian Economy
+            </div>
+            <div class="text-xs text-gray-500">
+             35% Military Factory Output
+            </div>
+           </div><span class="text-xs text-green-400">Default</span> </label> <label class="flex items-center p-3 bg-blue-900 rounded cursor-pointer border border-blue-600"> <input type="radio" name="economy" value="early" checked class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Early Mobilization
+            </div>
+            <div class="text-xs text-gray-500">
+             50% Military Factory Output
+            </div>
+           </div><span class="text-xs text-amber-400">Active</span> </label> <label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors"> <input type="radio" name="economy" value="partial" class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Partial Mobilization
+            </div>
+            <div class="text-xs text-gray-500">
+             80% Military Factory Output
+            </div>
+           </div><span class="text-xs text-orange-400">Wartime</span> </label> <label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors opacity-60"> <input type="radio" name="economy" value="war" disabled class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             War Economy
+            </div>
+            <div class="text-xs text-gray-500">
+             100% Military Factory Output
+            </div>
+           </div><span class="text-xs text-red-400">🔒 At War</span> </label>
+         </div>
+        </div><!-- Trade Law -->
+        <div class="panel-bg rounded-lg p-4">
+         <h3 class="font-military text-lg text-white mb-4 flex items-center gap-2"><span>🚢</span> นโยบายการค้า</h3>
+         <div class="space-y-2"><label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors"> <input type="radio" name="trade" value="free" class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Free Trade
+            </div>
+            <div class="text-xs text-gray-500">
+             80% Resources to Market • +15% Research
+            </div>
+           </div></label> <label class="flex items-center p-3 bg-blue-900 rounded cursor-pointer border border-blue-600"> <input type="radio" name="trade" value="export" checked class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Export Focus
+            </div>
+            <div class="text-xs text-gray-500">
+             50% Resources to Market • +10% Research
+            </div>
+           </div></label> <label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors"> <input type="radio" name="trade" value="limited" class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Limited Export
+            </div>
+            <div class="text-xs text-gray-500">
+             25% Resources to Market • +5% Research
+            </div>
+           </div></label> <label class="flex items-center p-3 bg-slate-800 rounded cursor-pointer hover:bg-slate-700 transition-colors"> <input type="radio" name="trade" value="closed" class="mr-3">
+           <div class="flex-1">
+            <div class="font-military text-sm">
+             Closed Economy
+            </div>
+            <div class="text-xs text-gray-500">
+             0% Resources to Market • +0% Research
+            </div>
+           </div></label>
+         </div>
+        </div><!-- War Support -->
+        <div class="panel-bg rounded-lg p-4">
+         <h3 class="font-military text-lg text-white mb-4 flex items-center gap-2"><span>📊</span> สถานะประเทศ</h3>
+         <div class="space-y-4">
+          <div>
+           <div class="flex items-center justify-between mb-1"><span class="text-sm text-gray-400">Stability</span> <span class="font-military text-green-400">72%</span>
+           </div>
+           <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+            <div class="h-full bg-green-500" style="width: 72%"></div>
+           </div>
+          </div>
+          <div>
+           <div class="flex items-center justify-between mb-1"><span class="text-sm text-gray-400">War Support</span> <span class="font-military text-amber-400">45%</span>
+           </div>
+           <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+            <div class="h-full bg-amber-500" style="width: 45%"></div>
+           </div>
+          </div>
+          <div>
+           <div class="flex items-center justify-between mb-1"><span class="text-sm text-gray-400">Political Power</span> <span class="font-military text-purple-400">280 (+1.2/day)</span>
+           </div>
+           <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+            <div class="h-full bg-purple-500" style="width: 56%"></div>
+           </div>
+          </div>
+          <div class="pt-4 border-t border-slate-700">
+           <div class="flex items-center justify-between text-sm"><span class="text-gray-400">Government</span> <span class="text-white">Democratic Republic</span>
+           </div>
+           <div class="flex items-center justify-between text-sm mt-2"><span class="text-gray-400">Ruling Party</span> <span class="text-blue-400">Unity Coalition</span>
+           </div>
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div>
+    </main>
+   </div><!-- Battle Popup -->
+   <div id="battle-popup" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+    <div class="panel-bg rounded-lg p-6 w-full max-w-2xl mx-4 border border-red-600">
+     <div class="flex items-center justify-between mb-4">
+      <h2 class="font-military text-xl text-red-400">⚔️ Battle of Central Plains</h2><button id="close-battle" class="text-gray-400 hover:text-white">
+       <svg class="w-6 h-6" viewbox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+       </svg></button>
+     </div>
+     <div class="grid grid-cols-3 gap-4 mb-6"><!-- Attacker -->
+      <div class="text-center">
+       <div class="font-military text-blue-400 mb-2">
+        AURORA
+       </div>
+       <div class="text-3xl font-military text-white mb-1">
+        12
+       </div>
+       <div class="text-xs text-gray-500">
+        Divisions
+       </div>
+       <div class="mt-2 space-y-1">
+        <div class="flex items-center justify-center gap-2"><span class="text-xs text-gray-400">ORG</span>
+         <div class="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-green-500" style="width: 68%"></div>
+         </div>
+        </div>
+        <div class="flex items-center justify-center gap-2"><span class="text-xs text-gray-400">STR</span>
+         <div class="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-red-500" style="width: 85%"></div>
+         </div>
+        </div>
+       </div>
+      </div><!-- VS -->
+      <div class="flex flex-col items-center justify-center">
+       <div class="text-4xl mb-2">
+        ⚔️
+       </div>
+       <div class="font-military text-amber-400">
+        VS
+       </div>
+       <div class="text-xs text-gray-500 mt-2">
+        Day 3 of Combat
+       </div>
+      </div><!-- Defender -->
+      <div class="text-center">
+       <div class="font-military text-red-400 mb-2">
+        OSTREICH
+       </div>
+       <div class="text-3xl font-military text-white mb-1">
+        8
+       </div>
+       <div class="text-xs text-gray-500">
+        Divisions
+       </div>
+       <div class="mt-2 space-y-1">
+        <div class="flex items-center justify-center gap-2"><span class="text-xs text-gray-400">ORG</span>
+         <div class="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-green-500" style="width: 45%"></div>
+         </div>
+        </div>
+        <div class="flex items-center justify-center gap-2"><span class="text-xs text-gray-400">STR</span>
+         <div class="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-red-500" style="width: 72%"></div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div><!-- Combat Modifiers -->
+     <div class="bg-slate-800 rounded p-3 mb-4">
+      <div class="font-military text-sm text-gray-400 mb-2">
+       Combat Modifiers
+      </div>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+       <div><span class="text-green-400">+20%</span> <span class="text-gray-400">Air Superiority</span>
+       </div>
+       <div><span class="text-red-400">-15%</span> <span class="text-gray-400">River Crossing</span>
+       </div>
+       <div><span class="text-green-400">+10%</span> <span class="text-gray-400">Planning Bonus</span>
+       </div>
+       <div><span class="text-amber-400">+5%</span> <span class="text-gray-400">General Skill</span>
+       </div>
+      </div>
+     </div><!-- Combat Progress -->
+     <div class="text-center">
+      <div class="font-military text-sm text-gray-400 mb-2">
+       Battle Progress
+      </div>
+      <div class="w-full h-4 bg-slate-700 rounded-full overflow-hidden relative">
+       <div class="absolute inset-y-0 left-0 bg-blue-600" style="width: 58%"></div>
+       <div class="absolute inset-y-0 right-0 bg-red-600" style="width: 42%"></div>
+      </div>
+      <div class="flex justify-between text-xs mt-1"><span class="text-blue-400">Attacking: 58%</span> <span class="text-red-400">Defending: 42%</span>
+      </div>
+     </div>
+    </div>
+   </div><!-- Notification Toast -->
+   <div id="notification-toast" class="fixed bottom-4 right-4 max-w-sm hidden">
+    <div class="panel-bg rounded-lg p-4 border-l-4 border-amber-500">
+     <div class="flex items-start gap-3"><span class="text-2xl">📢</span>
+      <div>
+       <div class="font-military text-amber-400" id="toast-title">
+        Event
+       </div>
+       <div class="text-sm text-gray-300" id="toast-message">
+        Message
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Default Configuration
+    const defaultConfig = {
+      nation_name: 'REPUBLIC OF AURORA',
+      leader_name: 'Marshal Viktor',
+      primary_color: '#0f172a',
+      secondary_color: '#1e293b',
+      accent_color: '#dc2626',
+      text_color: '#f1f5f9',
+      highlight_color: '#fbbf24'
+    };
+    
+    // Game State
+    let gameState = {
+      date: new Date(1936, 0, 1),
+      speed: 3,
+      paused: false,
+      selectedState: 'west',
+      resources: {
+        steel: 24,
+        oil: 12,
+        aluminum: 8,
+        manpower: 1250000
+      },
+      factories: {
+        civilian: 45,
+        military: 28,
+        dockyard: 12
+      },
+      divisions: {
+        infantry: 12,
+        tank: 4,
+        artillery: 8
+      },
+      policies: {
+        conscription: 'limited',
+        economy: 'early',
+        trade: 'export'
+      }
+    };
+    
+    // Game records from Data SDK
+    let gameRecords = [];
+    
+    // Data Handler for SDK
+    const dataHandler = {
+      onDataChanged(data) {
+        gameRecords = data;
+        if (data.length > 0) {
+          const latestSave = data[data.length - 1];
+          if (latestSave.resources_steel) {
+            gameState.resources.steel = latestSave.resources_steel;
+          }
+          if (latestSave.resources_oil) {
+            gameState.resources.oil = latestSave.resources_oil;
+          }
+          if (latestSave.resources_aluminum) {
+            gameState.resources.aluminum = latestSave.resources_aluminum;
+          }
+          if (latestSave.factories_civilian) {
+            gameState.factories.civilian = latestSave.factories_civilian;
+          }
+          if (latestSave.factories_military) {
+            gameState.factories.military = latestSave.factories_military;
+          }
+          if (latestSave.policy_conscription) {
+            gameState.policies.conscription = latestSave.policy_conscription;
+          }
+          if (latestSave.policy_economy) {
+            gameState.policies.economy = latestSave.policy_economy;
+          }
+          updateResourceDisplay();
+        }
+      }
+    };
+    
+    // Initialize Data SDK
+    async function initDataSDK() {
+      if (window.dataSdk) {
+        const result = await window.dataSdk.init(dataHandler);
+        if (!result.isOk) {
+          console.error('Failed to initialize Data SDK');
+        }
+      }
+    }
+    
+    // Update Resource Display
+    function updateResourceDisplay() {
+      const steelEl = document.getElementById('steel-display');
+      const oilEl = document.getElementById('oil-display');
+      const aluminumEl = document.getElementById('aluminum-display');
+      const manpowerEl = document.getElementById('manpower-display');
+      const civilianEl = document.getElementById('civilian-factories');
+      const militaryEl = document.getElementById('military-factories');
+      const totalCivilianEl = document.getElementById('total-civilian');
+      const totalMilitaryEl = document.getElementById('total-military');
+      
+      if (steelEl) steelEl.textContent = '+' + gameState.resources.steel;
+      if (oilEl) oilEl.textContent = '+' + gameState.resources.oil;
+      if (aluminumEl) aluminumEl.textContent = '+' + gameState.resources.aluminum;
+      if (manpowerEl) manpowerEl.textContent = gameState.resources.manpower.toLocaleString();
+      if (civilianEl) civilianEl.textContent = gameState.factories.civilian;
+      if (militaryEl) militaryEl.textContent = gameState.factories.military;
+      if (totalCivilianEl) totalCivilianEl.textContent = gameState.factories.civilian;
+      if (totalMilitaryEl) totalMilitaryEl.textContent = gameState.factories.military;
+    }
+    
+    // Save Game State
+    async function saveGameState() {
+      if (!window.dataSdk) return;
+      
+      if (gameRecords.length >= 999) {
+        showNotification('บันทึกเต็ม', 'ไม่สามารถบันทึกเพิ่มได้ กรุณาลบการบันทึกเก่า');
+        return;
+      }
+      
+      const saveData = {
+        type: 'game_save',
+        state_id: gameState.selectedState,
+        factories_civilian: gameState.factories.civilian,
+        factories_military: gameState.factories.military,
+        infrastructure: 7,
+        manpower: gameState.resources.manpower,
+        focus_id: 'industry2',
+        focus_progress: 32,
+        policy_conscription: gameState.policies.conscription,
+        policy_economy: gameState.policies.economy,
+        resources_steel: gameState.resources.steel,
+        resources_oil: gameState.resources.oil,
+        resources_aluminum: gameState.resources.aluminum,
+        divisions_infantry: gameState.divisions.infantry,
+        divisions_tank: gameState.divisions.tank,
+        divisions_artillery: gameState.divisions.artillery,
+        timestamp: new Date().toISOString()
+      };
+      
+      const result = await window.dataSdk.create(saveData);
+      if (result.isOk) {
+        showNotification('บันทึกสำเร็จ', 'เกมถูกบันทึกเรียบร้อยแล้ว');
+      } else {
+        showNotification('ผิดพลาด', 'ไม่สามารถบันทึกเกมได้');
+      }
+    }
+    
+    // Show Notification
+    function showNotification(title, message) {
+      const toast = document.getElementById('notification-toast');
+      const toastTitle = document.getElementById('toast-title');
+      const toastMessage = document.getElementById('toast-message');
+      
+      if (toastTitle) toastTitle.textContent = title;
+      if (toastMessage) toastMessage.textContent = message;
+      
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      
+      setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('flex');
+      }, 3000);
+    }
+    
+    // Format Date
+    function formatDate(date) {
+      const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 
+                      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+    
+    // Update Date Display
+    function updateDateDisplay() {
+      const dateEl = document.getElementById('game-date');
+      if (dateEl) {
+        dateEl.textContent = formatDate(gameState.date);
+      }
+    }
+    
+    // Game Loop
+    function gameLoop() {
+      if (!gameState.paused) {
+        gameState.date.setDate(gameState.date.getDate() + gameState.speed);
+        updateDateDisplay();
+      }
+    }
+    
+    // Tab Navigation
+    function setupNavigation() {
+      const navBtns = document.querySelectorAll('.nav-btn');
+      const panels = {
+        map: document.getElementById('map-panel'),
+        economy: document.getElementById('economy-panel'),
+        focus: document.getElementById('focus-panel'),
+        military: document.getElementById('military-panel'),
+        politics: document.getElementById('politics-panel')
+      };
+      
+      navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = btn.dataset.tab;
+          if (!tab || !panels[tab]) return;
+          
+          // Update button styles
+          navBtns.forEach(b => {
+            if (b.dataset.tab) {
+              b.classList.remove('bg-red-600', 'text-white');
+              b.classList.add('hover:bg-slate-700', 'text-gray-400');
+            }
+          });
+          btn.classList.add('bg-red-600', 'text-white');
+          btn.classList.remove('hover:bg-slate-700', 'text-gray-400');
+          
+          // Show/hide panels
+          Object.values(panels).forEach(panel => {
+            if (panel) panel.classList.add('hidden');
+          });
+          panels[tab].classList.remove('hidden');
+        });
+      });
+    }
+    
+    // Map Interactions
+    function setupMapInteractions() {
+      const states = document.querySelectorAll('.state-polygon');
+      const stateInfo = document.getElementById('state-info');
+      
+      states.forEach(state => {
+        state.addEventListener('click', () => {
+          const stateId = state.dataset.state;
+          gameState.selectedState = stateId;
+          
+          // Update visual selection
+          states.forEach(s => {
+            s.setAttribute('stroke-width', '2');
+            s.removeAttribute('filter');
+          });
+          state.setAttribute('stroke-width', '4');
+          state.setAttribute('filter', 'url(#glow)');
+        });
+      });
+      
+      // Battle indicator
+      const battleIndicator = document.getElementById('battle-indicator');
+      const battlePopup = document.getElementById('battle-popup');
+      const closeBattle = document.getElementById('close-battle');
+      
+      if (battleIndicator && battlePopup) {
+        battleIndicator.addEventListener('click', () => {
+          battlePopup.classList.remove('hidden');
+          battlePopup.classList.add('flex');
+        });
+      }
+      
+      if (closeBattle && battlePopup) {
+        closeBattle.addEventListener('click', () => {
+          battlePopup.classList.add('hidden');
+          battlePopup.classList.remove('flex');
+        });
+        
+        battlePopup.addEventListener('click', (e) => {
+          if (e.target === battlePopup) {
+            battlePopup.classList.add('hidden');
+            battlePopup.classList.remove('flex');
+          }
+        });
+      }
+    }
+    
+    // Speed Controls
+    function setupSpeedControls() {
+      const pauseBtn = document.getElementById('pause-btn');
+      const speed1Btn = document.getElementById('speed1-btn');
+      const speed2Btn = document.getElementById('speed2-btn');
+      const speed3Btn = document.getElementById('speed3-btn');
+      
+      const speedBtns = [speed1Btn, speed2Btn, speed3Btn];
+      
+      if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => {
+          gameState.paused = !gameState.paused;
+          pauseBtn.classList.toggle('bg-red-600', gameState.paused);
+        });
+      }
+      
+      speedBtns.forEach((btn, index) => {
+        if (btn) {
+          btn.addEventListener('click', () => {
+            gameState.speed = [1, 2, 5][index];
+            speedBtns.forEach(b => {
+              if (b) {
+                b.classList.remove('bg-red-600');
+                b.classList.add('bg-slate-700');
+              }
+            });
+            btn.classList.remove('bg-slate-700');
+            btn.classList.add('bg-red-600');
+          });
+        }
+      });
+    }
+    
+    // Action Buttons
+    function setupActions() {
+      const buildFactoryBtn = document.getElementById('build-factory-btn');
+      const upgradeInfraBtn = document.getElementById('upgrade-infra-btn');
+      const createDivisionBtn = document.getElementById('create-division-btn');
+      
+      if (buildFactoryBtn) {
+        buildFactoryBtn.addEventListener('click', () => {
+          gameState.factories.civilian += 1;
+          updateResourceDisplay();
+          showNotification('การก่อสร้าง', 'เริ่มก่อสร้างโรงงาน Civilian ใหม่');
+        });
+      }
+      
+      if (upgradeInfraBtn) {
+        upgradeInfraBtn.addEventListener('click', () => {
+          showNotification('การพัฒนา', 'เริ่มพัฒนาโครงสร้างพื้นฐาน');
+        });
+      }
+      
+      if (createDivisionBtn) {
+        createDivisionBtn.addEventListener('click', () => {
+          gameState.divisions.infantry += 1;
+          showNotification('กองทัพ', 'เริ่มฝึกกองพลใหม่');
+        });
+      }
+      
+      // Save button
+      const saveBtn = document.querySelector('[title="บันทึก"]');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', saveGameState);
+      }
+    }
+    
+    // Policy Changes
+    function setupPolicies() {
+      const conscriptionRadios = document.querySelectorAll('input[name="conscription"]');
+      const economyRadios = document.querySelectorAll('input[name="economy"]');
+      
+      conscriptionRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+          gameState.policies.conscription = radio.value;
+          updateManpowerFromPolicy();
+        });
+      });
+      
+      economyRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+          gameState.policies.economy = radio.value;
+        });
+      });
+    }
+    
+    function updateManpowerFromPolicy() {
+      const multipliers = {
+        volunteer: 1.5,
+        limited: 2.5,
+        extensive: 5,
+        service: 10
+      };
+      const basePopulation = 50000000;
+      const multiplier = multipliers[gameState.policies.conscription] || 2.5;
+      gameState.resources.manpower = Math.floor(basePopulation * multiplier / 100);
+      updateResourceDisplay();
+    }
+    
+    // Element SDK Integration
+    async function onConfigChange(config) {
+      const nationTitle = document.getElementById('nation-title');
+      const leaderDisplay = document.getElementById('leader-display');
+      
+      if (nationTitle) {
+        nationTitle.textContent = config.nation_name || defaultConfig.nation_name;
+      }
+      
+      if (leaderDisplay) {
+        const leaderName = config.leader_name || defaultConfig.leader_name;
+        leaderDisplay.innerHTML = `ผู้นำ: <span class="text-amber-400">${leaderName}</span>`;
+      }
+      
+      // Apply colors
+      document.body.style.setProperty('--primary-color', config.primary_color || defaultConfig.primary_color);
+      document.body.style.setProperty('--accent-color', config.accent_color || defaultConfig.accent_color);
+    }
+    
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [
+          {
+            get: () => config.primary_color || defaultConfig.primary_color,
+            set: (value) => {
+              config.primary_color = value;
+              if (window.elementSdk) window.elementSdk.setConfig({ primary_color: value });
+            }
+          },
+          {
+            get: () => config.accent_color || defaultConfig.accent_color,
+            set: (value) => {
+              config.accent_color = value;
+              if (window.elementSdk) window.elementSdk.setConfig({ accent_color: value });
+            }
+          },
+          {
+            get: () => config.highlight_color || defaultConfig.highlight_color,
+            set: (value) => {
+              config.highlight_color = value;
+              if (window.elementSdk) window.elementSdk.setConfig({ highlight_color: value });
+            }
+          }
+        ],
+        borderables: [],
+        fontEditable: {
+          get: () => 'Oswald',
+          set: () => {}
+        },
+        fontSizeable: {
+          get: () => 16,
+          set: () => {}
+        }
+      };
+    }
+    
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['nation_name', config.nation_name || defaultConfig.nation_name],
+        ['leader_name', config.leader_name || defaultConfig.leader_name]
+      ]);
+    }
+    
+    // Initialize Everything
+    async function init() {
+      // Initialize Element SDK
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities,
+          mapToEditPanelValues
+        });
+      }
+      
+      // Initialize Data SDK
+      await initDataSDK();
+      
+      // Setup UI
+      setupNavigation();
+      setupMapInteractions();
+      setupSpeedControls();
+      setupActions();
+      setupPolicies();
+      
+      // Initial display update
+      updateDateDisplay();
+      updateResourceDisplay();
+      onConfigChange(defaultConfig);
+      
+      // Start game loop (update every second)
+      setInterval(gameLoop, 1000);
+    }
+    
+    // Start the game
+    init();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c604a55273988ff',t:'MTc2OTc2ODk4OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
